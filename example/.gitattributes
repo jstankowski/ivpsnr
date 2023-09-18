@@ -1,0 +1,4 @@
+calculate_IV-PSNR.bat eol=crlf
+calculate_IV-PSNR.sh  eol=lf
+
+

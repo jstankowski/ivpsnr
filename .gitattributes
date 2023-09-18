@@ -1,0 +1,5 @@
+configure_and_build.bat      eol=crlf
+configure_and_build.sh       eol=lf
+configure_build_and_test.bat eol=crlf
+configure_build_and_test.sh  eol=lf
+

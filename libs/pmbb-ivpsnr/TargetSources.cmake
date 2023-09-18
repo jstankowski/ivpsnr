@@ -1,0 +1,17 @@
+target_sources(${PROJECT_NAME}
+PRIVATE
+  src/xGlobalColorShift.cpp
+  src/xBaseIV.cpp
+  src/xPSNR.cpp
+  src/xWSPSNR.cpp
+  src/xIVPSNR.cpp
+  src/xIVPSNRM.cpp
+PUBLIC
+  src/xCommonDefIVPSNR.h
+  src/xMetricCommon.h
+  src/xGlobalColorShift.h
+  src/xBaseIV.h
+  src/xPSNR.h
+  src/xWSPSNR.h
+  src/xIVPSNR.h
+)

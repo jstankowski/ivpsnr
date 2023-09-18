@@ -1,0 +1,47 @@
+target_sources(${PROJECT_NAME}
+  PRIVATE    
+    src/xDistortionSTD.cpp
+    src/xDistortionSSE.cpp
+    src/xDistortionAVX.cpp 
+    src/xDistortionAVX512.cpp 
+    src/xFmtScn.cpp
+    src/xMathUtils.cpp 
+    src/xMiscUtilsPMBB-CORE.cpp
+    src/xPic.cpp
+    src/xPicCommon.cpp
+    src/xPixelOpsSTD.cpp
+    src/xPixelOpsSSE.cpp
+    src/xPixelOpsAVX.cpp
+    src/xPixelOpsAVX512.cpp
+    src/xPlane.cpp
+    src/xSeq.cpp
+    src/xStream.cpp   
+    src/xTestUtils.cpp
+    src/xThreadPool.cpp
+
+  PUBLIC
+    src/xCommonDefPMBB-CORE.h
+    src/xDistortion.h  
+    src/xDistortionSTD.h  
+    src/xDistortionSSE.h  
+    src/xDistortionAVX.h
+    src/xDistortionAVX512.h
+    src/xEvent.h
+    src/xFmtScn.h
+    src/xMathUtils.h 
+    src/xMiscUtilsPMBB-CORE.h
+    src/xPic.h
+    src/xPicCommon.h
+    src/xPixelOps.h  
+    src/xPixelOpsSTD.h  
+    src/xPixelOpsSSE.h  
+    src/xPixelOpsAVX.h
+    src/xPixelOpsAVX512.h
+    src/xPlane.h    
+    src/xQueue.h
+    src/xSeq.h   
+    src/xStream.h   
+    src/xTestUtils.h
+    src/xThreadPool.h
+    src/xVec.h
+)

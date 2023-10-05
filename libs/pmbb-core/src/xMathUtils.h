@@ -34,7 +34,7 @@ public:
 class xMathUtils
 {
 public:
-  static flt64 KahanBabuskaNeumaierSumation(const flt64* x, const int32 n);
+  static flt64 KahanBabuskaNeumaierSumation(const flt64* x, const uintSize n);
 };
 
 //===============================================================================================================================================================================================================

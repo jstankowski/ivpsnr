@@ -9,13 +9,13 @@ namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
 
-flt64 xMathUtils::KahanBabuskaNeumaierSumation(const flt64* x, const int32 n)
+flt64 xMathUtils::KahanBabuskaNeumaierSumation(const flt64* x, const uintSize n)
 {
   if(n == 0) { return 0; }
 
   flt64 s = x[0];
   flt64 c = 0;
-  for(int32 i = 1; i < n; i++)
+  for(uintSize i = 1; i < n; i++)
   {
     flt64 t = s + x[i];
     if(xAbs(s) >= xAbs(x[i])) { c += ((s - t) + x[i]); }

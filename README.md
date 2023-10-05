@@ -61,7 +61,7 @@ The IV-PSNR CMake project defines the following parameters:
 | `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`        | BOOL | Enables generation of multiple code paths, optimized for each variant of x86-64 Microarchitecture Feature Levels. |
 | `PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH` | BOOL | Enables building single application with runtime dynamic dispatch. Requires `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES=True`. |
 | `PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL`          | BOOL | Enables building multiple applications, each optimized for selected x86-64 Microarchitecture Feature Level. Requires `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES=True`. |
-| `PMBB_BUILD_WITH_MARCH_NATIVE`                        | BOOL | Enable option to force compiler to tune generated code for the micro-architecture and ISA extensions of the host CPU. Conflicts with `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`. Generated binary is not portable. |
+| `PMBB_BUILD_WITH_MARCH_NATIVE`                        | BOOL | Enable option to force compiler to tune generated code for the micro-architecture and ISA extensions of the host CPU. Conflicts with `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`. Generated binary is not portable across different microarchitecures. |
 
 ## 5. Usage
 
@@ -120,7 +120,8 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |:----|:-----------------|:------------|
 |-t   | NumberOfThreads  | Number of worker threads (optional, default -1=all, suggested 4-8, 0=disables internal thread pool) |
 |-ilp | InterleavedPic   | Use additional image buffer with interleaved layout for IV-PSNR, (improves performance at a cost of increased memory usage, optional, default=1) |
-|-ipa | InvalidPelAction | Select action taken if invalid pixel value is detected (optional, default STOP) [SKIP - disable pixel value checking, WARN - print warning and ignore, STOP - stop execution, CNCL - try to conceal by clipping to bit depth range] |
+|-ipa | InvalidPelActn   | Select action taken if invalid pixel value is detected (optional, default STOP) [SKIP - disable pixel value checking, WARN - print warning and ignore, STOP - stop execution, CNCL - try to conceal by clipping to bit depth range] |
+|-nma | NameMismatchActn | Select action taken if parameters derived from filename are different than provided as input parameters. Checks resolution, bit depth and chroma format. (optional, default WARN) [SKIP - disable checking, WARN - print warning and ignore, STOP - stop execution] |
 |-v   | VerboseLevel     | Verbose level (optional, default=1) |
 
 #### External config file
@@ -179,14 +180,20 @@ VerboseLevel    = 3
 OutputFile      = "IV-PSNR.txt"
 ```
 
-### 5.5. Pixel values checking notes (InvalidPelAction)
-Before calculating the IV-PSNR metric the software scans the content of YUV file in order to evaluate if all pixel values are in range `[0, MaxVal]` where `MaxVal = (1<<BitDepth) - 1`. If invalid pel is detected the software can take following actions based on InvalidPelAction parameter value:
+### 5.5. Pixel values checking notes (InvalidPelActn)
+Before calculating the IV-PSNR metric the software scans the content of YUV file in order to evaluate if all pixel values are in range `[0, MaxVal]` where `MaxVal = (1<<BitDepth) - 1`. If invalid pel is detected the software can take following actions based on InvalidPelActn parameter value:
 * SKIP - disable pixel value checking
 * WARN - print warning and ignore invalid pel values (may lead to unreliable IV-PSNR, WS-PSNR and PSNR metrics value)
 * STOP - print warning and stop execution
 * CNCL - print warning and try to conceal the pel value by clipping to highest value within bit depth range
 
-### 5.6. Masked mode - requirements and notes
+### 5.6. Filename (filepath) parameters mismatch checking notes (InvalidPelAction)
+Before opening the YUV file the software tries to derive important video parameters (resolution, bit depth and chroma format) from file name and file path. If mismatch between parameters provided from commandline (or config file) and derived values is detected, the software can take following actions based on NameMismatchActn parameter value:
+* SKIP - disable pixel value checking
+* WARN - print warning and ignore invalid pel values
+* STOP - print warning and stop execution
+
+### 5.7. Masked mode - requirements and notes
 
 * Resolution of the mask file has to be identical as input file.
 * Allowed mask values are `0` (interpreted as inactive pixel) and `(1<<BitDepthM)-1)` (interpreted as active pixel). Behavior for other values is undefined at this moment.
@@ -196,9 +203,16 @@ Before calculating the IV-PSNR metric the software scans the content of YUV file
 
 ### v5.0 [M64727]
 
-* added detection invalid pel values (higher than `(1<<BitDepth) - 1`) and possibility to choose taken action (see InvalidPelAction parameter)
+* general overhaul of entire software structure 
 * new cmake-based build system with simultaneous build of four variants of x86-64 Microarchitecture Feature Level and runtime dynamic dispatch
+* added unit tests for basic data processing routines
+* added detection invalid pel values (higher than `(1<<BitDepth) - 1`) and possibility to choose taken action (see InvalidPelAction parameter)
 * added warning for settings influencing performance or breaking conformance with IV-PSNR metric defined in [M54279]
+* added detection of mismatch between file name and provided parameters (resolution, bit depth and chroma format)
+* added usage of hugepages on Linux-based systems (using madvise)
+* added support for chroma format 4:2:2
+* more data processing functions implemented using AVX2
+* wider SIMD (AVX512) implementation for some data processing functions 
 
 ### v4.0 [M59974]
 

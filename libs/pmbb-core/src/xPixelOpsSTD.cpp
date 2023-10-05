@@ -27,7 +27,7 @@ void xPixelOpsSTD::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, 
     Dst += DstStride;
   }
 }
-void xPixelOpsSTD::Upsample(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsSTD::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;
@@ -47,7 +47,7 @@ void xPixelOpsSTD::Upsample(uint16* restrict Dst, const uint16* Src, int32 DstSt
     DstL1 += (DstStride << 1);
   }
 }
-void xPixelOpsSTD::Downsample(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsSTD::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   const uint16* SrcL0 = Src;
   const uint16* SrcL1 = Src + SrcStride;
@@ -65,7 +65,7 @@ void xPixelOpsSTD::Downsample(uint16* restrict Dst, const uint16* Src, int32 Dst
     SrcL1 += (SrcStride << 1);
   }
 }
-void xPixelOpsSTD::CvtUpsample(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsSTD::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;
@@ -85,7 +85,7 @@ void xPixelOpsSTD::CvtUpsample(uint16* restrict Dst, const uint8* Src, int32 Dst
     DstL1 += (DstStride << 1);
   }
 }
-void xPixelOpsSTD::CvtDownsample(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsSTD::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   const uint16* SrcL0 = Src;
   const uint16* SrcL1 = Src + SrcStride;
@@ -102,6 +102,62 @@ void xPixelOpsSTD::CvtDownsample(uint8* restrict Dst, const uint16* Src, int32 D
     const int32 SrcStrideMul2 = SrcStride << 1;
     SrcL0 += SrcStrideMul2;
     SrcL1 += SrcStrideMul2;
+  }
+}
+void xPixelOpsSTD::UpsampleH(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  for(int32 y=0; y<DstHeight; y++)
+  {
+    for(int32 x=0; x<DstWidth; x+=2)
+    {
+      const uint16 S = Src[x>>1];
+      Dst[x  ] = S;
+      Dst[x+1] = S;
+    }
+    Src += SrcStride;
+    Dst += DstStride;
+  }
+}
+void xPixelOpsSTD::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  for(int32 y=0; y<DstHeight; y++)
+  {
+    for(int32 x=0; x<DstWidth; x++)
+    {
+      const int32 SrcX = x << 1;
+      int32 D = ((int32)Src[SrcX] + (int32)Src[SrcX + 1] + 1) >> 1;
+      Dst[x] = (uint16)D;
+    }
+    Dst += DstStride;
+    Src += SrcStride;
+  }
+}
+void xPixelOpsSTD::CvtUpsampleH(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  for(int32 y=0; y<DstHeight; y++)
+  {
+    for(int32 x=0; x<DstWidth; x+=2)
+    {
+      uint16 S = Src[x>>1];
+      Dst[x  ] = S;
+      Dst[x+1] = S;
+    }
+    Src += SrcStride;
+    Dst += DstStride;
+  }
+}
+void xPixelOpsSTD::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  for(int32 y=0; y<DstHeight; y++)
+  {
+    for(int32 x=0; x<DstWidth; x++)
+    {
+      const int32 SrcX = x << 1;
+      int32 D = ((int32)Src[SrcX] + (int32)Src[SrcX + 1] + 1) >> 1;
+      Dst[x] = (uint8)xClip<int32>(D, 0, 255);
+    }
+    Dst += DstStride;
+    Src += SrcStride;
   }
 }
 bool xPixelOpsSTD::CheckValues(const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth)

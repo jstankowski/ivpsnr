@@ -141,7 +141,8 @@ void testCvt(
 
 void testResample(
   std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>Upsample,
-  std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>Downsample
+  std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>Downsample,
+  const int32V2& SizeMultiplier
 )
 {
   std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
@@ -157,11 +158,13 @@ void testResample(
       for(const int32 m : c_Margs)
       {
         const std::string Description = fmt::sprintf("SizeXxY=%dx%d Margin=%d", x, y, m);
+        const int32V2     ImmSize     = Size * SizeMultiplier;
+        const int64       AreaMult    = SizeMultiplier.getMul();
       
-        //buffers create
-        xPlane<uint16>* Src = new xPlane<uint16>(Size  , 14, m);
-        xPlane<uint16>* Imm = new xPlane<uint16>(Size*2, 14, m);
-        xPlane<uint16>* Dst = new xPlane<uint16>(Size  , 14, m);
+        //buffers create        
+        xPlane<uint16>* Src = new xPlane<uint16>(Size   , 14, m);
+        xPlane<uint16>* Imm = new xPlane<uint16>(ImmSize, 14, m);
+        xPlane<uint16>* Dst = new xPlane<uint16>(Size   , 14, m);
 
         Src->fill(0);
         Imm->fill(0);
@@ -175,7 +178,7 @@ void testResample(
           int64 SumSrc = xTestUtils::calcSum(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight());
           Upsample  (Imm->getAddr(), Src->getAddr(), Imm->getStride(), Src->getStride(), Imm->getWidth(), Imm->getHeight());
           int64 SumImm = xTestUtils::calcSum(Imm->getAddr(), Imm->getStride(), Imm->getWidth(), Imm->getHeight());
-          CHECK(4*SumSrc == SumImm);
+          CHECK(AreaMult * SumSrc == SumImm);
           Downsample(Dst->getAddr(), Imm->getAddr(), Dst->getStride(), Imm->getStride(), Dst->getWidth(), Dst->getHeight());
           CHECK(xTestUtils::isSameBuffer(Src->getBuffer(), Dst->getBuffer(), Dst->getBuffNumPels(), true));
         }
@@ -188,11 +191,11 @@ void testResample(
     }
   }
 }
-
 void testCvtResample(
   std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>CvtU16toU8,
   std::function<void(uint16*, const uint8*, int32, int32, int32, int32)>CvtUpsampleU8toU16,
-  std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>CvtDownsampleU16toU8
+  std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>CvtDownsampleU16toU8,
+  const int32V2& SizeMultiplier
 )
 {
   std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
@@ -208,12 +211,14 @@ void testCvtResample(
       for(const int32 m : c_Margs)
       {
         const std::string Description = fmt::sprintf("SizeXxY=%dx%d Margin=%d", x, y, m);
+        const int32V2     ImmSize     = Size * SizeMultiplier;
+        const int64       AreaMult    = SizeMultiplier.getMul();
 
         //buffers create
-        xPlane<uint16>* Pre = new xPlane<uint16>(Size  , 8, m);
-        xPlane<uint8 >* Src = new xPlane<uint8 >(Size  , 8, m);
-        xPlane<uint16>* Imm = new xPlane<uint16>(Size*2, 8, m);
-        xPlane<uint8 >* Dst = new xPlane<uint8 >(Size  , 8, m);
+        xPlane<uint16>* Pre = new xPlane<uint16>(Size   , 8, m);
+        xPlane<uint8 >* Src = new xPlane<uint8 >(Size   , 8, m);
+        xPlane<uint16>* Imm = new xPlane<uint16>(ImmSize, 8, m);
+        xPlane<uint8 >* Dst = new xPlane<uint8 >(Size   , 8, m);
 
         Pre->fill(0);
         Src->fill(0);
@@ -229,7 +234,7 @@ void testCvtResample(
           int64 SumSrc = xTestUtils::calcSum(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight());
           CvtUpsampleU8toU16  (Imm->getAddr(), Src->getAddr(), Imm->getStride(), Src->getStride(), Imm->getWidth(), Imm->getHeight());
           int64 SumImm = xTestUtils::calcSum(Imm->getAddr(), Imm->getStride(), Imm->getWidth(), Imm->getHeight());
-          CHECK(4 * SumSrc == SumImm);
+          CHECK(AreaMult * SumSrc == SumImm);
           CvtDownsampleU16toU8(Dst->getAddr(), Imm->getAddr(), Dst->getStride(), Imm->getStride(), Dst->getWidth(), Dst->getHeight());
           CHECK(xTestUtils::isSameBuffer(Src->getBuffer(), Dst->getBuffer(), Dst->getBuffNumPels(), true));
         }
@@ -296,7 +301,7 @@ void testRearrange(
   }
 }
 
-void testCheckValues(std::function<int32(const uint16*, int32, int32, int32, int32)> CheckValues)
+void testCheckValues(std::function<bool(const uint16*, int32, int32, int32, int32)> CheckValues)
 {
   for(const int32 y : c_Dimms)
   {
@@ -319,27 +324,27 @@ void testCheckValues(std::function<int32(const uint16*, int32, int32, int32, int
           P->fill(0);
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == true);
 
-          P->accessPel({ 0,0 }) = MaxValue + 1;
+          P->accessPel({ 0,0 }) = uint16(MaxValue + 1);
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == false);
           P->accessPel({ 0,0 }) = 0;
 
-          P->accessPel({ 5, 9 }) = MaxValue + 1;
+          P->accessPel({ 5, 9 }) = uint16(MaxValue + 1);
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == false);
           P->accessPel({ 5, 9 }) = 0;
 
-          P->accessPel({ x - 1, 0 }) = MaxValue + 1;
+          P->accessPel({ x - 1, 0 }) = uint16(MaxValue + 1);
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == false);
           P->accessPel({ x - 1, 0 }) = 0;
 
-          P->accessPel({ 0, y - 1 }) = MaxValue + 1;
+          P->accessPel({ 0, y - 1 }) = uint16(MaxValue + 1);
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == false);
           P->accessPel({ 0, y - 1 }) = 0;
 
-          P->accessPel({ x - 1, y - 1 }) = MaxValue + 1;
+          P->accessPel({ x - 1, y - 1 }) = uint16(MaxValue + 1);
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == false);
           P->accessPel({ x - 1, y - 1 }) = 0;
 
-          P->fill(MaxValue);
+          P->fill(uint16(MaxValue));
           CHECK(CheckValues(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), b) == true);
         }
       }
@@ -421,14 +426,29 @@ TEST_CASE("xPixelOpsSTD")
   );
   testResample
   (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Upsample  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Downsample)
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::UpsampleHV  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::DownsampleHV),
+    { 2,2 }
   );
   testCvtResample
   (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt          ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSTD::CvtUpsample  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsample)
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt            ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSTD::CvtUpsampleHV  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsampleHV),
+    { 2,2 }
+  );
+  testResample
+  (
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::UpsampleH  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::DownsampleH),
+    { 2,1 }
+  );
+  testCvtResample
+  (
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt           ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSTD::CvtUpsampleH  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsampleH),
+    { 2,1 }
   );
   testRearrange
   (
@@ -457,19 +477,34 @@ TEST_CASE("xPixelOpsSSE")
   );
   testResample
   (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Upsample),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Downsample)
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::UpsampleHV  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::DownsampleHV),
+    { 2,2 }
   );
   testCvtResample
   (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt          ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSSE::CvtUpsample  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsample)
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt            ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSSE::CvtUpsampleHV  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::CvtDownsampleHV),
+    { 2,2 }
+  );
+  testResample
+  (
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::UpsampleH  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::DownsampleH),
+    { 2,1 }
+  );
+  testCvtResample
+  (
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt           ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSSE::CvtUpsampleH  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::CvtDownsampleH),
+    { 2,1 }
   );
   testRearrange
   (
     &xPixelOpsSSE::AOS4fromSOA3,
-    &xPixelOpsSTD::SOA3fromAOS4
+    &xPixelOpsSSE::SOA3fromAOS4
   );
   testCheckValues
   (
@@ -494,19 +529,35 @@ TEST_CASE("xPixelOpsAVX")
   );
   testResample
   (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Upsample  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Downsample)
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::UpsampleHV  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::DownsampleHV),
+    { 2,2 }
   );
   testCvtResample
   (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt          ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX::CvtUpsample  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsample)
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt            ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX::CvtUpsampleHV  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::CvtDownsampleHV),
+    { 2,2 }
   );
+  testResample
+  (
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::UpsampleH  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::DownsampleH),
+    { 2,1 }
+  );
+  testCvtResample
+  (
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt           ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX::CvtUpsampleH  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::CvtDownsampleH),
+    { 2,1 }
+  );
+
   testRearrange
   (
     &xPixelOpsAVX::AOS4fromSOA3,
-    &xPixelOpsSTD::SOA3fromAOS4
+    &xPixelOpsAVX::SOA3fromAOS4
   );
   testCheckValues
   (
@@ -531,14 +582,16 @@ TEST_CASE("xPixelOpsAVX512")
   );
   testResample
   (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::Upsample  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD   ::Downsample)
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::UpsampleHV  ),
+    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD   ::DownsampleHV),
+    { 2,2 }
   );
   testCvtResample
   (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::Cvt          ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX512::CvtUpsample  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD   ::CvtDownsample)
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::Cvt            ),
+    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX512::CvtUpsampleHV  ),
+    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD   ::CvtDownsampleHV),
+    { 2,2 }
   );
   testRearrange
   (

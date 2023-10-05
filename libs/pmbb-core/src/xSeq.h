@@ -8,13 +8,7 @@
 #include "xCommonDefPMBB-CORE.h"
 #include "xStream.h"
 #include "xPic.h"
-
-#if __has_include("xPlane.h")
 #include "xPlane.h"
-#define HAS_XPLANE 1
-#else
-#define HAS_XPLANE 0
-#endif
 
 namespace PMBB_NAMESPACE {
 
@@ -24,9 +18,9 @@ class xSeq
 {
 public:
   enum class eMode : int32 { Unknown, Read, Write, Append };
-  enum class eRetv : int32 { Success, EndOfFile, Error, WrongArg };
+  enum class [[nodiscard]] eRetv : int32 { Success, EndOfFile, Error, WrongArg };
 
-  static std::string_view ResultToString(eRetv Result)
+  static std::string_view ResultToStr(eRetv Result)
   {
     switch(Result)
     {
@@ -52,7 +46,7 @@ public:
     static inline bool CheckResult(eRetv Result)
     {
       if(Result == eRetv::Success) { return true; }
-      fmt::print("xSeq error type = {}", ResultToString(Result));
+      fmt::print("xSeq error type = {}", ResultToStr(Result));
       return false;
     }
 
@@ -96,10 +90,8 @@ public:
   tResult seekFrame (int32 FrameNumber);
   tResult readFrame (xPicP*       Pic);
   tResult writeFrame(const xPicP* Pic, bool Flush = false);
-#if HAS_XPLANE
   tResult readFrame (xPlane<uint16>*       Plane);
   tResult writeFrame(const xPlane<uint16>* Plane, bool Flush = false);
-#endif //HAS_XPLANE
 
 public:
   inline int32 getWidth   () const { return m_Width           ; }
@@ -117,10 +109,8 @@ public:
 protected:
   bool xUnpackFrame(      xPicP* Pic);
   bool xPackFrame  (const xPicP* Pic);
-#if HAS_XPLANE
   bool xUnpackFrame(      xPlane<uint16>* Pic);
   bool xPackFrame  (const xPlane<uint16>* Pic);
-#endif //HAS_XPLANE
 
 public:
   static int32 calcNumFramesInFile(int32V2 Size, int32 BitDepth, int32 ChromaFormat, int64 FileSize);

@@ -169,7 +169,6 @@ xSeq::tResult xSeq::writeFrame(const xPicP* Pic, bool Flush)
 
   return eRetv::Success;
 }
-#if HAS_XPLANE
 xSeq::tResult xSeq::readFrame(xPlane<uint16>* Plane)
 {
   if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
@@ -207,7 +206,6 @@ xSeq::tResult xSeq::writeFrame(const xPlane<uint16>* Plane, bool Flush)
 
   return eRetv::Success;
 }
-#endif //HAS_XPLANE
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -233,15 +231,32 @@ bool xSeq::xUnpackFrame(xPicP* Pic)
       const int32 ChromaFileStride      = m_Width >> 1;
       if(m_BytesPerSample == 1)
       {
-        xPixelOps::CvtUpsample(PtrCb, ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+        xPixelOps::CvtUpsampleHV(PtrCb, ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
         ChromaPtr += ChromaFileCmpNumBytes;
-        xPixelOps::CvtUpsample(PtrCr, ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+        xPixelOps::CvtUpsampleHV(PtrCr, ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
       }
       else
       {
-        xPixelOps::Upsample(PtrCb, (uint16*)ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+        xPixelOps::UpsampleHV(PtrCb, (uint16*)ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
         ChromaPtr += ChromaFileCmpNumBytes;
-        xPixelOps::Upsample(PtrCr, (uint16*)ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+        xPixelOps::UpsampleHV(PtrCr, (uint16*)ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+      }
+    }
+    else if(m_ChromaFormat == 422)
+    {
+      const int32 ChromaFileCmpNumBytes = m_FileCmpNumBytes >> 1;
+      const int32 ChromaFileStride      = m_Width >> 1;
+      if(m_BytesPerSample == 1)
+      {
+        xPixelOps::CvtUpsampleH(PtrCb, ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+        ChromaPtr += ChromaFileCmpNumBytes;
+        xPixelOps::CvtUpsampleH(PtrCr, ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+      }
+      else
+      {
+        xPixelOps::UpsampleH(PtrCb, (uint16*)ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
+        ChromaPtr += ChromaFileCmpNumBytes;
+        xPixelOps::UpsampleH(PtrCr, (uint16*)ChromaPtr, Stride, ChromaFileStride, m_Width, m_Height);
       }
     }
     else if(m_ChromaFormat == 444)
@@ -284,15 +299,32 @@ bool xSeq::xPackFrame(const xPicP* Pic)
       const int32 ChromaFileStride      = m_Width >> 1;
       if(m_BytesPerSample == 1)
       {
-        xPixelOps::CvtDownsample(ChromaPtr, PtrCb, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+        xPixelOps::CvtDownsampleHV(ChromaPtr, PtrCb, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
         ChromaPtr += ChromaFileCmpNumBytes;
-        xPixelOps::CvtDownsample(ChromaPtr, PtrCr, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+        xPixelOps::CvtDownsampleHV(ChromaPtr, PtrCr, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
       }
       else
       {
-        xPixelOps::Downsample((uint16*)ChromaPtr, PtrCb, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+        xPixelOps::DownsampleHV((uint16*)ChromaPtr, PtrCb, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
         ChromaPtr += ChromaFileCmpNumBytes;
-        xPixelOps::Downsample((uint16*)ChromaPtr, PtrCr, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+        xPixelOps::DownsampleHV((uint16*)ChromaPtr, PtrCr, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+      }
+    }
+    if(m_ChromaFormat == 422)
+    {
+      const int32 ChromaFileCmpNumBytes = m_FileCmpNumBytes >> 1;
+      const int32 ChromaFileStride      = m_Width >> 1;
+      if(m_BytesPerSample == 1)
+      {
+        xPixelOps::CvtDownsampleH(ChromaPtr, PtrCb, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+        ChromaPtr += ChromaFileCmpNumBytes;
+        xPixelOps::CvtDownsampleH(ChromaPtr, PtrCr, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+      }
+      else
+      {
+        xPixelOps::DownsampleH((uint16*)ChromaPtr, PtrCb, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
+        ChromaPtr += ChromaFileCmpNumBytes;
+        xPixelOps::DownsampleH((uint16*)ChromaPtr, PtrCr, ChromaFileStride, Stride, m_Width>>1, m_Height>>1);
       }
     }
     else if(m_ChromaFormat == 444)
@@ -314,8 +346,6 @@ bool xSeq::xPackFrame(const xPicP* Pic)
   }
   return true;
 }
-
-#if HAS_XPLANE
 bool xSeq::xUnpackFrame(xPlane<uint16>* Pic)
 {
   uint16* PtrLm      = Pic->getAddr  ();
@@ -356,7 +386,6 @@ bool xSeq::xPackFrame(const xPlane<uint16>* Pic)
 
   return true;
 }
-#endif //HAS_XPLANE
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -382,7 +411,7 @@ xSeq::tResult xSeq::dumpFrame(const xPicP* Pic, const std::string& FileName, int
 {
   xSeq Seq(Pic->getSize(), Pic->getBitDepth(), ChromaFormat);
   tResult ResultOpen = Seq.openFile(FileName, Append ? eMode::Append : eMode::Write);
-  if(ResultOpen != eRetv::Success) { return ResultOpen; }
+  if(ResultOpen  != eRetv::Success) { return ResultOpen ; }
   tResult ResultWrite = Seq.writeFrame(Pic);
   if(ResultWrite != eRetv::Success) { return ResultWrite; }
   tResult ResultClose = Seq.closeFile();

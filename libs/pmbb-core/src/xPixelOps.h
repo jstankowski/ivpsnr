@@ -52,62 +52,77 @@ public:
   template <typename PelType> static inline void Fill(PelType* restrict Dst, const PelType Value, int32 Area);
 
 public:  
-  //static inline void Copy         (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { Copy<uint16>         (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void Downsample   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::Downsample   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void CvtDownsample(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::CvtDownsample(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void SOA3fromAOS4(uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOps::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
+  static inline bool  FindBroken   (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::FindBroken   (Src, Stride, Width, Height, BitDepth); }
+  static inline void  ConcealBroken(uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::ConcealBroken(Ptr, Stride, Width, Height, BitDepth); }
 
-  static inline bool FindBroken   (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::FindBroken   (Src, Stride, Width, Height, BitDepth); }
-  static inline void ConcealBroken(uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::ConcealBroken(Ptr, Stride, Width, Height, BitDepth); }
-
-  static inline void ExtendMargin (uint16* Addr, int32 Stride, int32 Width, int32 Height, int32 Margin) { xPixelOpsSTD::ExtendMargin(Addr, Stride, Width, Height, Margin); }
+  static inline void  ExtendMargin (uint16* Addr, int32 Stride, int32 Width, int32 Height, int32 Margin) { xPixelOpsSTD::ExtendMargin(Addr, Stride, Width, Height, Margin); }
 
 #if   X_CAN_USE_AVX512
   
-  static inline void  Cvt          (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Cvt          (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Upsample     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::Upsample     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void  CvtUpsample  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::CvtUpsample  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  
-  static inline bool  CheckValues  (const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsAVX512::CheckValues(Src, SrcStride, Width, Height, BitDepth); }
-  static inline void  AOS4fromSOA3 (uint16* DstABCD, const uint16* SrcA, const uint16* SrcB, const uint16* SrcC, uint16 ValueD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsAVX::AOS4fromSOA3(DstABCD, SrcA, SrcB, SrcC, ValueD, DstStride, SrcStride, Width, Height); }
-
-  static inline int32 CountNonZero (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsAVX512::CountNonZero(Src, SrcStride, Width, Height); }
+  static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  UpsampleHV     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::UpsampleHV   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::DownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleHV  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::CvtUpsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleHV(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtDownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  UpsampleH      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::UpsampleH      (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleH   (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtUpsampleH   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleH    (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::DownsampleH    (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleH (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtDownsampleH (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }  
+  static inline bool  CheckValues    (const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsAVX512::CheckValues(Src, SrcStride, Width, Height, BitDepth); }
+  static inline void  AOS4fromSOA3   (uint16* DstABCD, const uint16* SrcA, const uint16* SrcB, const uint16* SrcC, uint16 ValueD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsAVX::AOS4fromSOA3(DstABCD, SrcA, SrcB, SrcC, ValueD, DstStride, SrcStride, Width, Height); }
+  static inline void  SOA3fromAOS4   (uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsAVX::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
+  static inline int32 CountNonZero   (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsAVX512::CountNonZero(Src, SrcStride, Width, Height); }
 
 #elif X_CAN_USE_AVX
   
-  static inline void  Cvt          (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Cvt          (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Upsample     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::Upsample     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void  CvtUpsample  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtUpsample  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  
+  static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  UpsampleHV     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::UpsampleHV     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::DownsampleHV   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleHV  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtUpsampleHV  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleHV(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtDownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  UpsampleH      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::UpsampleH      (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleH   (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtUpsampleH   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleH    (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::DownsampleH    (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleH (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtDownsampleH (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }  
   static inline bool  CheckValues  (const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsAVX::CheckValues(Src, SrcStride, Width, Height, BitDepth); }
   static inline void  AOS4fromSOA3 (uint16* DstABCD, const uint16* SrcA, const uint16* SrcB, const uint16* SrcC, uint16 ValueD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsAVX::AOS4fromSOA3(DstABCD, SrcA, SrcB, SrcC, ValueD, DstStride, SrcStride, Width, Height); }
-
+  static inline void  SOA3fromAOS4 (uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsAVX::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
   static inline int32 CountNonZero (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsAVX::CountNonZero(Src, SrcStride, Width, Height); }
 
 #elif X_CAN_USE_SSE
 
-  static inline void  Cvt          (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSSE::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Cvt          (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSSE::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Upsample     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::Upsample     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void  CvtUpsample  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::CvtUpsample  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  
+  static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSSE::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSSE::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  UpsampleHV     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::UpsampleHV     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::DownsampleHV   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleHV  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::CvtUpsampleHV  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleHV(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::CvtDownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  UpsampleH      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::UpsampleH      (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleH   (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::CvtUpsampleH   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleH    (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::DownsampleH    (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleH (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSSE::CvtDownsampleH (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }  
   static inline bool  CheckValues  (const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSSE::CheckValues(Src, SrcStride, Width, Height, BitDepth); }
   static inline void  AOS4fromSOA3 (uint16* DstABCD, const uint16* SrcA, const uint16* SrcB, const uint16* SrcC, uint16 ValueD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSSE::AOS4fromSOA3(DstABCD, SrcA, SrcB, SrcC, ValueD, DstStride, SrcStride, Width, Height); }
-
+  static inline void  SOA3fromAOS4 (uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSSE::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
   static inline int32 CountNonZero (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsSSE::CountNonZero(Src, SrcStride, Width, Height); }
 
 #else //X_CAN_USE_???
 
-  static inline void  Cvt          (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSTD::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Cvt          (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSTD::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
-  static inline void  Upsample     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::Upsample     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void  CvtUpsample  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::CvtUpsample  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  
+  static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSTD::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSTD::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  UpsampleHV     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::UpsampleHV     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::DownsampleHV   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleHV  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::CvtUpsampleHV  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleHV(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::CvtDownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  UpsampleH      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::UpsampleH      (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleH   (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::CvtUpsampleH   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleH    (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::DownsampleH    (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleH (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsSTD::CvtDownsampleH (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }  
   static inline bool  CheckValues  (const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::CheckValues(Src, SrcStride, Width, Height, BitDepth); }
   static inline void  AOS4fromSOA3 (uint16* DstABCD, const uint16* SrcA, const uint16* SrcB, const uint16* SrcC, uint16 ValueD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSTD::AOS4fromSOA3(DstABCD, SrcA, SrcB, SrcC, ValueD, DstStride, SrcStride, Width, Height); }
-
+  static inline void  SOA3fromAOS4 (uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSTD::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
   static inline int32 CountNonZero (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountNonZero(Src, SrcStride, Width, Height); }
 
 #endif //X_CAN_USE_???

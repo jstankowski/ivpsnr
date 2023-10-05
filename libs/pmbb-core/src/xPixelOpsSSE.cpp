@@ -103,7 +103,7 @@ void xPixelOpsSSE::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, 
     }
   }
 }
-void xPixelOpsSSE::Upsample(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsSSE::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;  
@@ -165,7 +165,80 @@ void xPixelOpsSSE::Upsample(uint16* restrict Dst, const uint16* restrict Src, in
     }
   }
 }
-void xPixelOpsSSE::CvtUpsample(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsSSE::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  __m128i Two_I32_V = _mm_set1_epi32((int32)2);
+
+  const uint16* SrcL0 = Src;
+  const uint16* SrcL1 = Src + SrcStride;
+
+  if(((uint32)DstWidth & (uint32)c_RemainderMask8)==0) //Width%8==0
+  {
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<DstWidth; x+=8)
+      {
+        const int32 SrcX = x<<1;
+        __m128i TopLeft_U16_V     = _mm_loadu_si128((__m128i*)&SrcL0[SrcX  ]);
+        __m128i TopRight_U16_V    = _mm_loadu_si128((__m128i*)&SrcL0[SrcX+8]);
+        __m128i BottomLeft_U16_V  = _mm_loadu_si128((__m128i*)&SrcL1[SrcX  ]);
+        __m128i BottomRight_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX+8]);
+        __m128i Left_U16_V        = _mm_add_epi16(TopLeft_U16_V , BottomLeft_U16_V );
+        __m128i Right_U16_V       = _mm_add_epi16(TopRight_U16_V, BottomRight_U16_V);
+        __m128i Left_I32_V        = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Left_U16_V , _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i Right_I32_V       = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Right_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i Out_U16_V         = _mm_packus_epi32(Left_I32_V, Right_I32_V);
+        _mm_storeu_si128 ((__m128i*)&Dst[x], Out_U16_V);
+      }
+      SrcL0 += (SrcStride << 1);
+      SrcL1 += (SrcStride << 1);
+      Dst   += DstStride;
+    }
+  }  
+  else
+  {
+    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8);
+    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4);
+
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<Width8; x+=8)
+      {
+        const int32 SrcX = x<<1;
+        __m128i TopLeft_U16_V     = _mm_loadu_si128((__m128i*)&SrcL0[SrcX  ]);
+        __m128i TopRight_U16_V    = _mm_loadu_si128((__m128i*)&SrcL0[SrcX+8]);
+        __m128i BottomLeft_U16_V  = _mm_loadu_si128((__m128i*)&SrcL1[SrcX  ]);
+        __m128i BottomRight_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX+8]);
+        __m128i Left_U16_V        = _mm_add_epi16(TopLeft_U16_V , BottomLeft_U16_V );
+        __m128i Right_U16_V       = _mm_add_epi16(TopRight_U16_V, BottomRight_U16_V);
+        __m128i Left_I32_V        = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Left_U16_V , _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i Right_I32_V       = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Right_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i Out_U16_V         = _mm_packus_epi32(Left_I32_V, Right_I32_V);
+        _mm_storeu_si128 ((__m128i*)&Dst[x], Out_U16_V);
+      }
+      for(int32 x=Width8; x<Width4; x+=4)
+      {
+        const int32 SrcX = x<<1;
+        __m128i TopLeft_U16_V     = _mm_loadu_si128((__m128i*)&SrcL0[SrcX  ]);
+        __m128i BottomLeft_U16_V  = _mm_loadu_si128((__m128i*)&SrcL1[SrcX  ]);
+        __m128i Left_U16_V        = _mm_add_epi16(TopLeft_U16_V, BottomLeft_U16_V);
+        __m128i Left_I32_V        = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Left_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i Out_U16_V         = _mm_packus_epi32(Left_I32_V, _mm_setzero_si128());
+        _mm_storel_epi64 ((__m128i*)&Dst[x], Out_U16_V);
+      }
+      for(int32 x=Width4; x<DstWidth; x++)
+      {      
+        const int32 SrcX = x<<1;
+        int16 D = ((int32)SrcL0[SrcX  ] + (int32)SrcL0[SrcX+1] + (int32)SrcL1[SrcX  ] + (int32)SrcL1[SrcX+1] + 2)>>2;
+        Dst[x] = D;
+      }
+      SrcL0 += (SrcStride << 1);
+      SrcL1 += (SrcStride << 1);
+      Dst   += DstStride;
+    }
+  }
+}
+void xPixelOpsSSE::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   uint16 *restrict DstL0 = Dst;
   uint16 *restrict DstL1 = Dst + DstStride;
@@ -244,6 +317,348 @@ void xPixelOpsSSE::CvtUpsample(uint16* restrict Dst, const uint8* Src, int32 Dst
       Src   += SrcStride;
       DstL0 += (DstStride << 1);
       DstL1 += (DstStride << 1);
+    }
+  }
+}
+void xPixelOpsSSE::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  __m128i Two_I32_V = _mm_set1_epi32((int32)2);
+
+  const uint16* SrcL0 = Src;
+  const uint16* SrcL1 = Src + SrcStride;
+
+  if(((uint32)DstWidth & c_RemainderMask16) == 0) //Width%16==0
+  {
+    for(int32 y = 0; y < DstHeight; y++)
+    {
+      for(int32 x = 0; x < DstWidth; x += 16)
+      {
+        const int32 SrcX = x<<1;
+        __m128i TopA_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX     ]);
+        __m128i TopB_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 8 ]);
+        __m128i TopC_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 16]);
+        __m128i TopD_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 24]);
+        __m128i BotA_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX     ]);
+        __m128i BotB_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 8 ]);
+        __m128i BotC_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 16]);
+        __m128i BotD_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 24]);
+        __m128i A_U16_V    = _mm_add_epi16(TopA_U16_V, BotA_U16_V);
+        __m128i B_U16_V    = _mm_add_epi16(TopB_U16_V, BotB_U16_V);
+        __m128i C_U16_V    = _mm_add_epi16(TopC_U16_V, BotC_U16_V);
+        __m128i D_U16_V    = _mm_add_epi16(TopD_U16_V, BotD_U16_V);
+        __m128i A_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(A_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i B_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(B_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i C_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(C_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i D_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(D_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i AB_U16_V   = _mm_packus_epi32(A_I32_V, B_I32_V);
+        __m128i CD_U16_V   = _mm_packus_epi32(C_I32_V, D_I32_V);
+        __m128i Dst_U8_V   = _mm_packus_epi16(AB_U16_V, CD_U16_V);
+        _mm_storeu_si128((__m128i*)(&(Dst[x])), Dst_U8_V);
+      }
+      SrcL0 += (SrcStride << 1);
+      SrcL1 += (SrcStride << 1);
+      Dst   += DstStride;
+    }
+  }
+  else
+  {
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+
+    for(int32 y = 0; y < DstHeight; y++)
+    {
+      for(int32 x = 0; x < Width16; x += 16)
+      {
+        const int32 SrcX = x<<1;
+        __m128i TopA_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX     ]);
+        __m128i TopB_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 8 ]);
+        __m128i TopC_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 16]);
+        __m128i TopD_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 24]);
+        __m128i BotA_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX     ]);
+        __m128i BotB_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 8 ]);
+        __m128i BotC_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 16]);
+        __m128i BotD_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 24]);
+        __m128i A_U16_V    = _mm_add_epi16(TopA_U16_V, BotA_U16_V);
+        __m128i B_U16_V    = _mm_add_epi16(TopB_U16_V, BotB_U16_V);
+        __m128i C_U16_V    = _mm_add_epi16(TopC_U16_V, BotC_U16_V);
+        __m128i D_U16_V    = _mm_add_epi16(TopD_U16_V, BotD_U16_V);
+        __m128i A_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(A_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i B_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(B_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i C_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(C_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i D_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(D_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i AB_U16_V   = _mm_packus_epi32(A_I32_V, B_I32_V);
+        __m128i CD_U16_V   = _mm_packus_epi32(C_I32_V, D_I32_V);
+        __m128i Dst_U8_V   = _mm_packus_epi16(AB_U16_V, CD_U16_V);
+        _mm_storeu_si128((__m128i*)(&(Dst[x])), Dst_U8_V);
+      }
+      for(int32 x = Width16; x < Width8; x += 8)
+      {
+        const int32 SrcX = x<<1;
+        __m128i TopA_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX     ]);
+        __m128i TopB_U16_V = _mm_loadu_si128((__m128i*)&SrcL0[SrcX + 8 ]);
+        __m128i BotA_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX     ]);
+        __m128i BotB_U16_V = _mm_loadu_si128((__m128i*)&SrcL1[SrcX + 8 ]);
+        __m128i A_U16_V    = _mm_add_epi16(TopA_U16_V, BotA_U16_V);
+        __m128i B_U16_V    = _mm_add_epi16(TopB_U16_V, BotB_U16_V);
+        __m128i A_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(A_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i B_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(B_U16_V, _mm_set1_epi16(1)), Two_I32_V), 2);
+        __m128i AB_U16_V   = _mm_packus_epi32(A_I32_V, B_I32_V);
+        __m128i Dst_U8_V   = _mm_packus_epi16(AB_U16_V, _mm_setzero_si128());
+        _mm_storel_epi64((__m128i*)(&(Dst[x])), Dst_U8_V);
+      }
+      for(int32 x = Width8; x < DstWidth; x++)
+      {
+        const int32 SrcX = x << 1;
+        int32 D = ((int32)SrcL0[SrcX] + (int32)SrcL0[SrcX + 1] + (int32)SrcL1[SrcX] + (int32)SrcL1[SrcX + 1] + 2) >> 2;
+        Dst[x] = (uint8)xClip<int32>(D, 0, 255);
+      }
+      SrcL0 += (SrcStride << 1);
+      SrcL1 += (SrcStride << 1);
+      Dst   += DstStride;
+    }
+  }
+}
+void xPixelOpsSSE::UpsampleH(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  if(((uint32)DstWidth & c_RemainderMask16)==0) //Width%16==0
+  {
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<DstWidth; x+=16)
+      {
+        __m128i SrcV   = _mm_loadu_si128((__m128i*)&Src[x>>1]);
+        __m128i LeftV  = _mm_unpacklo_epi16(SrcV, SrcV);
+        __m128i RightV = _mm_unpackhi_epi16(SrcV, SrcV);
+        _mm_storeu_si128((__m128i*)&Dst[x  ], LeftV );
+        _mm_storeu_si128((__m128i*)&Dst[x+8], RightV);
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }
+  else
+  {
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<Width16; x+=16)
+      {
+        __m128i SrcV   = _mm_loadu_si128((__m128i*)&Src[x>>1]);
+        __m128i LeftV  = _mm_unpacklo_epi16(SrcV, SrcV);
+        __m128i RightV = _mm_unpackhi_epi16(SrcV, SrcV);
+        _mm_storeu_si128((__m128i*)&Dst[x  ], LeftV );
+        _mm_storeu_si128((__m128i*)&Dst[x+8], RightV);
+      }
+      for(int32 x=Width16; x<Width8; x+=8)
+      {
+        __m128i SrcV  = _mm_loadl_epi64((__m128i*)&Src[x>>1]);
+        __m128i LeftV = _mm_unpacklo_epi16(SrcV, SrcV);
+        _mm_storeu_si128((__m128i*)&Dst[x  ], LeftV );
+      }
+      for(int32 x=Width8; x<DstWidth; x+=2)
+      {
+        const uint16 S = Src[x>>1];
+        Dst[x  ] = S;
+        Dst[x+1] = S;
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }
+}
+void xPixelOpsSSE::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  if(((uint32)DstWidth & (uint32)c_RemainderMask8)==0) //Width%8==0
+  {
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<DstWidth; x+=8)
+      {
+        const int32 SrcX = x<<1;
+        __m128i Left_U16_V  = _mm_loadu_si128((__m128i*)&Src[SrcX  ]);
+        __m128i Right_U16_V = _mm_loadu_si128((__m128i*)&Src[SrcX+8]);
+        __m128i Left_I32_V  = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Left_U16_V , _mm_set1_epi16(1)), _mm_set1_epi32((int32)1)), 1);
+        __m128i Right_I32_V = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Right_U16_V, _mm_set1_epi16(1)), _mm_set1_epi32((int32)1)), 1);
+        __m128i Out_U16_V   = _mm_packus_epi32(Left_I32_V, Right_I32_V);
+        _mm_storeu_si128 ((__m128i*)&Dst[x], Out_U16_V);
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }  
+  else
+  {
+    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8);
+    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4);
+
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<Width8; x+=8)
+      {
+        const int32 SrcX = x<<1;
+        __m128i Left_U16_V  = _mm_loadu_si128((__m128i*)&Src[SrcX  ]);
+        __m128i Right_U16_V = _mm_loadu_si128((__m128i*)&Src[SrcX+8]);
+        __m128i Left_I32_V  = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Left_U16_V , _mm_set1_epi16(1)), _mm_set1_epi32((int32)1)), 1);
+        __m128i Right_I32_V = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Right_U16_V, _mm_set1_epi16(1)), _mm_set1_epi32((int32)1)), 1);
+        __m128i Out_U16_V   = _mm_packus_epi32(Left_I32_V, Right_I32_V);
+        _mm_storeu_si128 ((__m128i*)&Dst[x], Out_U16_V);
+      }
+      for(int32 x=Width8; x<Width4; x+=4)
+      {
+        const int32 SrcX = x<<1;
+        __m128i Left_U16_V  = _mm_loadu_si128((__m128i*)&Src[SrcX  ]);
+        __m128i Left_I32_V  = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(Left_U16_V, _mm_set1_epi16(1)), _mm_set1_epi32((int32)1)), 1);
+        __m128i Out_U16_V   = _mm_packus_epi32(Left_I32_V, _mm_setzero_si128());
+        _mm_storel_epi64 ((__m128i*)&Dst[x], Out_U16_V);
+      }
+      for(int32 x=Width4; x<DstWidth; x++)
+      {      
+        const int32 SrcX = x<<1;
+        int16 D = ((int32)Src[SrcX  ] + (int32)Src[SrcX+1] + 1)>>1;
+        Dst[x] = D;
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }
+}
+void xPixelOpsSSE::CvtUpsampleH(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  if(((uint32)DstWidth & c_RemainderMask32)==0) //Width%32==0
+  {
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<DstWidth; x+=32)
+      {
+        __m128i SrcV  = _mm_loadu_si128   ((__m128i*)&Src[x>>1]);
+        __m128i SrcV1 = _mm_unpacklo_epi8 (SrcV, _mm_setzero_si128());
+        __m128i SrcV2 = _mm_unpackhi_epi8 (SrcV, _mm_setzero_si128());
+        __m128i DstV1 = _mm_unpacklo_epi16(SrcV1, SrcV1);
+        __m128i DstV2 = _mm_unpackhi_epi16(SrcV1, SrcV1);
+        __m128i DstV3 = _mm_unpacklo_epi16(SrcV2, SrcV2);
+        __m128i DstV4 = _mm_unpackhi_epi16(SrcV2, SrcV2);
+        _mm_storeu_si128((__m128i*) & Dst[x     ], DstV1);
+        _mm_storeu_si128((__m128i*) & Dst[x +  8], DstV2);
+        _mm_storeu_si128((__m128i*) & Dst[x + 16], DstV3);
+        _mm_storeu_si128((__m128i*) & Dst[x + 24], DstV4);
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }
+  else
+  {
+    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32);
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
+
+    for(int32 y=0; y<DstHeight; y++)
+    {
+      for(int32 x=0; x<Width32; x+=32)
+      {
+        __m128i SrcV  = _mm_loadu_si128   ((__m128i*)&Src[x>>1]);
+        __m128i SrcV1 = _mm_unpacklo_epi8 (SrcV, _mm_setzero_si128());
+        __m128i SrcV2 = _mm_unpackhi_epi8 (SrcV, _mm_setzero_si128());
+        __m128i DstV1 = _mm_unpacklo_epi16(SrcV1, SrcV1);
+        __m128i DstV2 = _mm_unpackhi_epi16(SrcV1, SrcV1);
+        __m128i DstV3 = _mm_unpacklo_epi16(SrcV2, SrcV2);
+        __m128i DstV4 = _mm_unpackhi_epi16(SrcV2, SrcV2);
+        _mm_storeu_si128((__m128i*) & Dst[x     ], DstV1);
+        _mm_storeu_si128((__m128i*) & Dst[x +  8], DstV2);
+        _mm_storeu_si128((__m128i*) & Dst[x + 16], DstV3);
+        _mm_storeu_si128((__m128i*) & Dst[x + 24], DstV4);
+      }
+      for(int32 x=Width32; x<Width16; x+=16)
+      {
+        __m128i SrcVh = _mm_loadl_epi64((__m128i*)&Src[x>>1]);
+        __m128i SrcV1 = _mm_unpacklo_epi8 (SrcVh, _mm_setzero_si128());
+        __m128i DstV1 = _mm_unpacklo_epi16(SrcV1, SrcV1);
+        __m128i DstV2 = _mm_unpackhi_epi16(SrcV1, SrcV1);
+        _mm_storeu_si128((__m128i*) & Dst[x    ], DstV1);
+        _mm_storeu_si128((__m128i*) & Dst[x + 8], DstV2);
+      }
+      for(int32 x=Width16; x<DstWidth; x+=2)
+      {
+        int16 S = Src[x>>1];
+        Dst[x  ] = S;
+        Dst[x+1] = S;
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }
+}
+void xPixelOpsSSE::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  __m128i One_I32_V = _mm_set1_epi32((int32)1);
+
+  if(((uint32)DstWidth & c_RemainderMask16) == 0) //Width%16==0
+  {
+    for(int32 y = 0; y < DstHeight; y++)
+    {
+      for(int32 x = 0; x < DstWidth; x += 16)
+      {
+        const int32 SrcX = x<<1;
+        __m128i A_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX     ]);
+        __m128i B_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 8 ]);
+        __m128i C_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 16]);
+        __m128i D_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 24]);
+        __m128i A_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(A_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i B_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(B_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i C_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(C_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i D_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(D_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i AB_U16_V   = _mm_packus_epi32(A_I32_V, B_I32_V);
+        __m128i CD_U16_V   = _mm_packus_epi32(C_I32_V, D_I32_V);
+        __m128i Dst_U8_V   = _mm_packus_epi16(AB_U16_V, CD_U16_V);
+        _mm_storeu_si128((__m128i*)(&(Dst[x])), Dst_U8_V);
+      }
+      Src += SrcStride;
+      Dst += DstStride;
+    }
+  }
+  else
+  {
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+
+    for(int32 y = 0; y < DstHeight; y++)
+    {
+      for(int32 x = 0; x < Width16; x += 16)
+      {
+        const int32 SrcX = x<<1;
+        __m128i A_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX     ]);
+        __m128i B_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 8 ]);
+        __m128i C_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 16]);
+        __m128i D_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 24]);
+        __m128i A_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(A_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i B_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(B_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i C_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(C_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i D_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(D_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i AB_U16_V   = _mm_packus_epi32(A_I32_V, B_I32_V);
+        __m128i CD_U16_V   = _mm_packus_epi32(C_I32_V, D_I32_V);
+        __m128i Dst_U8_V   = _mm_packus_epi16(AB_U16_V, CD_U16_V);
+        _mm_storeu_si128((__m128i*)(&(Dst[x])), Dst_U8_V);
+      }
+      for(int32 x = Width16; x < Width8; x += 8)
+      {
+        const int32 SrcX = x<<1;
+        __m128i A_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX     ]);
+        __m128i B_U16_V    = _mm_loadu_si128((__m128i*)&Src[SrcX + 8 ]);
+        __m128i A_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(A_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i B_I32_V    = _mm_srai_epi32(_mm_add_epi32(_mm_madd_epi16(B_U16_V, _mm_set1_epi16(1)), One_I32_V), 1);
+        __m128i AB_U16_V   = _mm_packus_epi32(A_I32_V, B_I32_V);
+        __m128i Dst_U8_V   = _mm_packus_epi16(AB_U16_V, _mm_setzero_si128());
+        _mm_storel_epi64((__m128i*)(&(Dst[x])), Dst_U8_V);
+      }
+      for(int32 x = Width8; x < DstWidth; x++)
+      {
+        const int32 SrcX = x << 1;
+        int32 D = ((int32)Src[SrcX] + (int32)Src[SrcX + 1] + 1) >> 1;
+        Dst[x] = (uint8)xClip<int32>(D, 0, 255);
+      }
+      Src += SrcStride;
+      Dst += DstStride;
     }
   }
 }
@@ -392,6 +807,119 @@ void xPixelOpsSSE::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
       SrcB    += SrcStride;
       SrcC    += SrcStride;
       DstABCD += DstStride;
+    }
+  }
+}
+void xPixelOpsSSE::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, uint16* restrict DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
+{
+  if(((uint32)Width & (uint32)c_RemainderMask8)==0) //Width%8==0
+  {
+    for(int32 y=0; y<Height; y++)
+    {
+      for(int32 x=0; x<Width; x+=8)
+      {
+        //load
+        __m128i abcd_0 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+ 0]);
+        __m128i abcd_1 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+ 8]);
+        __m128i abcd_2 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+16]);
+        __m128i abcd_3 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+24]);
+
+        //transpose
+        __m128i ac_0 = _mm_unpacklo_epi16(abcd_0, abcd_1);
+        __m128i ac_1 = _mm_unpackhi_epi16(abcd_0, abcd_1);
+        __m128i bd_0 = _mm_unpacklo_epi16(abcd_2, abcd_3);
+        __m128i bd_1 = _mm_unpackhi_epi16(abcd_2, abcd_3);
+
+        __m128i a_0 = _mm_unpacklo_epi16(ac_0, ac_1);
+        __m128i b_0 = _mm_unpackhi_epi16(ac_0, ac_1);
+        __m128i c_0 = _mm_unpacklo_epi16(bd_0, bd_1);
+        __m128i d_0 = _mm_unpackhi_epi16(bd_0, bd_1);
+
+        __m128i a = _mm_unpacklo_epi64(a_0, c_0);
+        __m128i b = _mm_unpackhi_epi64(a_0, c_0);
+        __m128i c = _mm_unpacklo_epi64(b_0, d_0);
+
+        //save
+        _mm_storeu_si128((__m128i*)&DstA[x], a);
+        _mm_storeu_si128((__m128i*)&DstB[x], b);
+        _mm_storeu_si128((__m128i*)&DstC[x], c);
+      }
+      SrcABCD += SrcStride;
+      DstA    += DstStride;
+      DstB    += DstStride;
+      DstC    += DstStride;
+    }
+  }
+  else
+  {
+    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8);
+    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4);
+
+    for(int32 y=0; y<Height; y++)
+    {
+      for(int32 x=0; x<Width8; x+=8)
+      {
+        //load
+        __m128i abcd_0 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+ 0]);
+        __m128i abcd_1 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+ 8]);
+        __m128i abcd_2 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+16]);
+        __m128i abcd_3 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+24]);
+
+        //transpose
+        __m128i ac_0 = _mm_unpacklo_epi16(abcd_0, abcd_1);
+        __m128i ac_1 = _mm_unpackhi_epi16(abcd_0, abcd_1);
+        __m128i bd_0 = _mm_unpacklo_epi16(abcd_2, abcd_3);
+        __m128i bd_1 = _mm_unpackhi_epi16(abcd_2, abcd_3);
+
+        __m128i a_0 = _mm_unpacklo_epi16(ac_0, ac_1);
+        __m128i b_0 = _mm_unpackhi_epi16(ac_0, ac_1);
+        __m128i c_0 = _mm_unpacklo_epi16(bd_0, bd_1);
+        __m128i d_0 = _mm_unpackhi_epi16(bd_0, bd_1);
+
+        __m128i a = _mm_unpacklo_epi64(a_0, c_0);
+        __m128i b = _mm_unpackhi_epi64(a_0, c_0);
+        __m128i c = _mm_unpacklo_epi64(b_0, d_0);
+
+        //save
+        _mm_storeu_si128((__m128i*)&DstA[x], a);
+        _mm_storeu_si128((__m128i*)&DstB[x], b);
+        _mm_storeu_si128((__m128i*)&DstC[x], c);
+      }
+      for(int32 x=Width8; x<Width4; x+=4)
+      {
+        //load
+        __m128i abcd_0 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+ 0]);
+        __m128i abcd_1 = _mm_loadu_si128((__m128i*)&SrcABCD[(x<<2)+ 8]);
+
+        //transpose
+        __m128i aabbccdd_02 = _mm_unpacklo_epi16(abcd_0, abcd_1);
+        __m128i aabbccdd_13 = _mm_unpackhi_epi16(abcd_0, abcd_1);
+
+        __m128i aaaabbbb = _mm_unpacklo_epi16(aabbccdd_02, aabbccdd_13);
+        __m128i ccccdddd = _mm_unpackhi_epi16(aabbccdd_02, aabbccdd_13);
+
+        __m128i a = aaaabbbb;
+        __m128i b = _mm_unpackhi_epi64(aaaabbbb, aaaabbbb);
+        __m128i c = ccccdddd;
+
+        //save
+        _mm_storel_epi64((__m128i*)&DstA[x], a);
+        _mm_storel_epi64((__m128i*)&DstB[x], b);
+        _mm_storel_epi64((__m128i*)&DstC[x], c);
+      }
+      for(int32 x=Width4; x<Width; x++)
+      {      
+        int16 a = SrcABCD[(x<<2)+0];
+        int16 b = SrcABCD[(x<<2)+1];
+        int16 c = SrcABCD[(x<<2)+2];
+        DstA[x] = a;
+        DstB[x] = b;
+        DstC[x] = c;
+      }
+      SrcABCD += SrcStride;
+      DstA    += DstStride;
+      DstB    += DstStride;
+      DstC    += DstStride;
     }
   }
 }

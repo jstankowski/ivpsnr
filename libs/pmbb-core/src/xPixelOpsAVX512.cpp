@@ -107,7 +107,7 @@ void xPixelOpsAVX512::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStrid
     } //y
   }
 }
-void xPixelOpsAVX512::Upsample(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   const __m512i PermCtlV = _mm512_setr_epi64(0, 4, 1, 5, 2, 6, 3, 7);
   uint16* restrict DstL0 = Dst;
@@ -170,7 +170,7 @@ void xPixelOpsAVX512::Upsample(uint16* restrict Dst, const uint16* restrict Src,
     } //y
   }
 }
-void xPixelOpsAVX512::CvtUpsample(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsAVX512::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   const __m512i PermCtlV = _mm512_setr_epi64(0, 4, 1, 5, 2, 6, 3, 7);
   uint16* restrict DstL0 = Dst;

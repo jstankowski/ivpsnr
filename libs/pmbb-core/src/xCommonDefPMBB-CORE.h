@@ -128,6 +128,45 @@ using v512U8  = __v64qu;
 
 #endif //(defined(__clang__) || defined(__GNUC__)) && !defined(NDEBUG)
 
+#if X_SIMD_CAN_USE_SSE
+static inline int32 xHorVecSum_epi32(__m128i v)
+{
+  __m128i hi64  = _mm_unpackhi_epi64(v, v);
+  __m128i sum64 = _mm_add_epi32(hi64, v);
+  __m128i hi32  = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
+  __m128i sum32 = _mm_add_epi32(sum64, hi32);
+  return _mm_cvtsi128_si32(sum32);       // movd
+}
+static inline int64 xHorVecSum_epi64(__m128i v)
+{
+  __m128i hi64  = _mm_unpackhi_epi64(v, v);
+  __m128i sum64 = _mm_add_epi64(hi64, v);
+  return _mm_cvtsi128_si64(sum64);
+}
+#endif //X_SIMD_CAN_USE_SSE
+
+#if X_SIMD_CAN_USE_AVX
+static inline int32 xHorVecSum_epi32(__m256i v)
+{
+  __m128i Sum_I32_V128 = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
+  return xHorVecSum_epi32(Sum_I32_V128);
+}
+static inline int64 xHorVecSum_epi64(__m256i v)
+{
+  __m128i Sum_I64_V128 = _mm_add_epi64(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
+  return xHorVecSum_epi64(Sum_I64_V128);
+}
+#endif //X_SIMD_CAN_USE_AVX
+
+#if X_SIMD_CAN_USE_AVX512
+static inline int32 xHorVecSum_epi32(__m512i v)
+{
+  __m256i Sum_I64_V256 = _mm256_add_epi32(_mm512_castsi512_si256(v),_mm512_extracti64x4_epi64(v, 1));
+  return xHorVecSum_epi32(Sum_I64_V256);
+}
+#endif //X_SIMD_CAN_USE_AVX512
+
+
 //===============================================================================================================================================================================================================
 // Basic ops
 //===============================================================================================================================================================================================================

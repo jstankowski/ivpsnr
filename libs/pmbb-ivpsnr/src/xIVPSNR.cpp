@@ -19,7 +19,7 @@ flt64 xIVPSNR::calcPicIVPSNR(const xPicP* Ref, const xPicP* Tst, const xPicI* Re
   assert(Ref != nullptr && Tst != nullptr);
   assert(Ref->isCompatible(Tst));
 
-  int32V4 GlobalColorShiftRef2Tst = xGlobalColorShift::Calc(Ref, Tst, m_CmpUnntcbCoef, &m_ThreadPoolIf);
+  int32V4 GlobalColorShiftRef2Tst = CalcGlobalColorShift(Ref, Tst, m_CmpUnntcbCoef, &m_ThreadPoolIf);
   int32V4 GlobalColorShiftTst2Ref = -GlobalColorShiftRef2Tst;
   
   flt64 R2T = std::numeric_limits<flt64>::quiet_NaN();
@@ -73,7 +73,7 @@ flt64 xIVPSNR::xCalcQualAsymmetricPic(const xPicP* Ref, const xPicP* Tst, const 
     }
   }
 
-  flt64V4 FrameError = xMakeVec4<flt64>(0.0);;
+  flt64V4 FrameError = xMakeVec4<flt64>(0.0);
   if(m_UseWS)
   {
     for(int32 y = 0; y < Height; y++)

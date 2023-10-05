@@ -12,7 +12,7 @@ namespace PMBB_NAMESPACE {
 // global color shift
 //===============================================================================================================================================================================================================
 
-int32V4 xGlobalColorShift::Calc(const xPicP* Ref, const xPicP* Tst, const flt32V4& CmpUnntcbCoef, tThPI* ThreadPoolIf)
+int32V4 xGlobalColorShift::CalcGlobalColorShift(const xPicP* Ref, const xPicP* Tst, const flt32V4& CmpUnntcbCoef, tThPI* ThreadPoolIf)
 {
   const int32   MaxValue = Ref->getMaxPelValue();
   const int32V4 MaxDiff  = xRoundFltToInt32(CmpUnntcbCoef * (flt32)MaxValue);
@@ -52,7 +52,7 @@ flt64 xGlobalColorShift::xCalcAvgColorDiff(const uint16* RefPtr, const uint16* T
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-int32V4 xGlobalColorShift::CalcM(const xPicP* Ref, const xPicP* Tst, const xPicP* Msk, const flt32V4& CmpUnntcbCoef, const int32 NumNonMasked, tThPI* ThreadPoolIf)
+int32V4 xGlobalColorShift::CalcGlobalColorShiftM(const xPicP* Ref, const xPicP* Tst, const xPicP* Msk, const flt32V4& CmpUnntcbCoef, const int32 NumNonMasked, tThPI* ThreadPoolIf)
 {
   const int32   MaxValue = Ref->getMaxPelValue();
   const int32V4 MaxDiff  = xRoundFltToInt32(CmpUnntcbCoef * (flt32)MaxValue);

@@ -6,7 +6,6 @@
 #pragma once
 
 #include "xCommonDefIVPSNR.h"
-#include "xThreadPool.h"
 #include "xMathUtils.h"
 #include <numeric>
 
@@ -19,7 +18,6 @@ class xMetricCommon
 public:
   static constexpr bool  c_UseKBNS       = xc_USE_KBNS;
   static constexpr int32 c_NumComponents = 3;
-  using tThPI = xThreadPoolInterface;
 
 protected:
   int32 m_NumComponents = c_NumComponents;

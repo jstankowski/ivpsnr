@@ -53,9 +53,9 @@ void testDistortion(
         {
           CAPTURE(Description + fmt::sprintf(" Center=%d", c));
 
-          PL->fill(c-1);
-          PC->fill(c  );
-          PU->fill(c+1);
+          PL->fill(uint16(c-1));
+          PC->fill(uint16(c  ));
+          PU->fill(uint16(c+1));
 
           if(m == 0)
           {

@@ -106,11 +106,11 @@ public:
     void     addArg    (std::string_view Arg) { m_Args.emplace_back(Arg); }
 
     tCSR  getArg(uint32 ArgIdx, tCSR  Default) const { return m_Args.size()>ArgIdx ? m_Args[ArgIdx] : Default; }
-    flt64 getArg(uint32 ArgIdx, flt64 Default) const { return m_Args.size()>ArgIdx ? xStringToXXX(m_Args[ArgIdx], Default) : Default; }
-    flt32 getArg(uint32 ArgIdx, flt32 Default) const { return m_Args.size()>ArgIdx ? xStringToXXX(m_Args[ArgIdx], Default) : Default; }
-    int64 getArg(uint32 ArgIdx, int64 Default) const { return m_Args.size()>ArgIdx ? xStringToXXX(m_Args[ArgIdx], Default) : Default; }
-    int32 getArg(uint32 ArgIdx, int32 Default) const { return m_Args.size()>ArgIdx ? xStringToXXX(m_Args[ArgIdx], Default) : Default; }
-    bool  getArg(uint32 ArgIdx, bool  Default) const { return m_Args.size()>ArgIdx ? xStringToXXX(m_Args[ArgIdx], Default) : Default; }
+    flt64 getArg(uint32 ArgIdx, flt64 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
+    flt32 getArg(uint32 ArgIdx, flt32 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
+    int64 getArg(uint32 ArgIdx, int64 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
+    int32 getArg(uint32 ArgIdx, int32 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
+    bool  getArg(uint32 ArgIdx, bool  Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
 
     const stringVx&    getArgs(             ) const { return m_Args; }
     std::vector<flt32> getArgs(flt32 Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
@@ -120,7 +120,7 @@ public:
     std::vector<bool > getArgs(bool  Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
 
   protected:
-    template <class XXX> static XXX xStringToXXX(tCSR Str, XXX Default)
+    template <class XXX> static XXX xStrToXXX(tCSR Str, XXX Default)
     {
       if(Str.length() > 0) { std::istringstream InStringStream(Str, std::istringstream::in); InStringStream >> Default; }
       return Default;
@@ -128,7 +128,7 @@ public:
     template <class XXX> static std::vector<XXX>xVecOfStringToVecOfXXX(const std::vector<std::string>& VecStr, XXX Default)
     { 
       std::vector<XXX> VecXXX;
-      std::transform(VecStr.cbegin(), VecStr.cend(), std::back_inserter(VecXXX), [&](tCSR Str) -> XXX { return xStringToXXX<XXX>(Str, Default); });
+      std::transform(VecStr.cbegin(), VecStr.cend(), std::back_inserter(VecXXX), [&](tCSR Str) -> XXX { return xStrToXXX<XXX>(Str, Default); });
       return VecXXX;
     }
   };

@@ -57,6 +57,7 @@ void xPicP::fill(uint16 Value)
 void xPicP::fill(uint16 Value, eCmp CmpId)
 { 
   xPixelOps::Fill(m_Buffer[(int32)CmpId], Value, m_BuffCmpNumPels);
+  m_IsMarginExtended = true;
 }
 bool xPicP::check(const std::string& Name)
 {
@@ -84,10 +85,12 @@ void xPicP::conceal()
   {
     xPixelOps::ConcealBroken(m_Origin[CmpIdx], m_Stride, m_Width, m_Height, m_BitDepth);
   }
+  m_IsMarginExtended = false;
 }
 void xPicP::extend()
 {
   for(int32 CmpIdx = 0; CmpIdx < m_NumCmps; CmpIdx++) { xPixelOps::ExtendMargin(m_Origin[CmpIdx], m_Stride, m_Width, m_Height, m_Margin); }
+  m_IsMarginExtended = true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -175,6 +178,13 @@ void xPicI::rearrangeFromPlanar(const xPicP* Planar)
   const int32 ExtWidth  = m_Width  + (m_Margin << 1);
   const int32 ExtHeight = m_Height + (m_Margin << 1);
   xPixelOps::AOS4fromSOA3(m_Buffer, Planar->getBuffer(eCmp::C0), Planar->getBuffer(eCmp::C1), Planar->getBuffer(eCmp::C2), 0, m_Stride * c_MaxNumCmps, Planar->getStride(), ExtWidth, ExtHeight);
+}
+void xPicI::rearrangeToPlanar(xPicP* Planar)
+{
+  assert(isCompatible(Planar));
+  const int32 ExtWidth  = m_Width  + (m_Margin << 1);
+  const int32 ExtHeight = m_Height + (m_Margin << 1);
+  xPixelOps::SOA3fromAOS4(Planar->getBuffer(eCmp::C0), Planar->getBuffer(eCmp::C1), Planar->getBuffer(eCmp::C2), m_Buffer, Planar->getStride(), m_Stride * c_MaxNumCmps, ExtWidth, ExtHeight);
 }
 
 //===============================================================================================================================================================================================================

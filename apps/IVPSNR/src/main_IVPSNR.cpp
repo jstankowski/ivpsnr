@@ -33,7 +33,7 @@ R"PMBBRAWSTRING(
 
 IV-PSNR software v5.0
 
-Copyright (c) 2020-2022, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
+Copyright (c) 2020-2023, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
 Developed at Poznan University of Technology, Poznan, Poland
 Authors: Jakub Stankowski, Adrian Dziembowski
@@ -54,21 +54,22 @@ IV-PSNR software v5.0
 Usage:
 
  Cmd | ParamName        | Description
- -i0   InputFile0         File path - SeqIn 0
- -i1   InputFile1         File path - SeqIn 1
+ -i0   InputFile0         YUV File path - input sequence 0
+ -i1   InputFile1         YUV File path - input sequence 1
  -w    PictureWidth       Width of SeqIn
  -h    PictureHeight      Height of SeqIn
  -bd   BitDepth           Bit depth     (optional, default 8, up to 14) 
- -cf   ChromaFormat       Chroma format (optional, default 420) [420, 444]
+ -cf   ChromaFormat       Chroma format (optional, default 420) [420, 422, 444]
  -s0   StartFrame0        Start frame   (optional, default 0) 
  -s1   StartFrame1        Start frame   (optional, default 0) 
  -l    NumberOfFrames     Number of frames to be processed 
                           (optional, default -1=all)
+
  -r    ResultFile         Output file path for printing result(s) (optional)
 
  -im   InputFileM         YUV file path - mask (optional)
  -bdm  BitDepthM          Bit depth for mask     (optional, default=BitDepth, up to 16)
- -cfm  ChromaFormatM      Chroma format for mask (optional, default=ChromaFormat) [400, 420, 444]
+ -cfm  ChromaFormatM      Chroma format for mask (optional, default=ChromaFormat) [400, 420, 422, 444]
 
  -erp  Equirectangular    Equirectangular SeqIn (flag, default disabled)
  -lor  LonRangeDeg        Range for ERP SeqIn in degrees - Longitudinal
@@ -93,10 +94,14 @@ Usage:
  -ilp  InterleavedPic     Use additional image buffer with interleaved layout for IV-PSNR 
                           (improves performance at a cost of increased memory usage
                           optional, default=1)
- -ipa  InvalidPelAction   Select action taken if invalid pixel value is detected 
+ -ipa  InvalidPelActn     Select action taken if invalid pixel value is detected 
                           (optional, default STOP) [SKIP - disable pixel value checking,
                           WARN - print warning and ignore, STOP - stop execution,
                           CNCL - try to conceal by clipping to bit depth range]
+ -nma  NameMismatchActn   Select action taken if parameters derived from filename are different
+                          than provided as input parameters. Checks resolution, bit depth
+                          and chroma format. (optional, default WARN) [SKIP - disable checking,
+                          WARN - print warning and ignore, STOP - stop execution]
  -v    VerboseLevel       Verbose level (optional, default=1)
 
  -c    "config.cfg"       External config file - in INI format (optional)
@@ -128,30 +133,31 @@ Example - config file:
 
 //===============================================================================================================================================================================================================
 
-enum class eIPA : int32
+enum class eActn : int32
 {
   INVALID = NOT_VALID,
-  SKIP = 0, //SKIP - disable pixel value checking,
+  SKIP = 0, //SKIP - disable value checking,
   WARN = 1, //WARN - print warning and ignore
   STOP = 2, //STOP - stop execution
-  CNCL = 3, //CNCL - try to conceal by clipping to bit depth range
+  CNCL = 3, //CNCL - try to conceal
 };
 
-static inline eIPA xStringToIPA(const std::string& BFA)
+static inline eActn xStrToActn(const std::string_view Actn)
 {
-  return BFA == "SKIP" ? eIPA::SKIP :
-         BFA == "WARN" ? eIPA::WARN :
-         BFA == "STOP" ? eIPA::STOP :
-         BFA == "CNCL" ? eIPA::CNCL :
-         eIPA::INVALID;
+  std::string IPA_U = xString::toUpper(Actn);
+  return IPA_U == "SKIP" ? eActn::SKIP :
+         IPA_U == "WARN" ? eActn::WARN :
+         IPA_U == "STOP" ? eActn::STOP :
+         IPA_U == "CNCL" ? eActn::CNCL :
+                           eActn::INVALID;
 }
-static inline std::string xIPAToString(eIPA BFA)
+static inline std::string xActnToString(eActn IPA)
 {
-  return BFA == eIPA::SKIP ? "SKIP" :
-         BFA == eIPA::WARN ? "WARN" :
-         BFA == eIPA::STOP ? "STOP" :
-         BFA == eIPA::CNCL ? "CNCL" :
-        "INVALID";
+  return IPA == eActn::SKIP ? "SKIP" :
+         IPA == eActn::WARN ? "WARN" :
+         IPA == eActn::STOP ? "STOP" :
+         IPA == eActn::CNCL ? "CNCL" :
+                              "INVALID";
 }
 
 //===============================================================================================================================================================================================================
@@ -192,9 +198,9 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
   CfgParser.addCmdParm("ws8", "Legacy8bitWSPSNR", "", "Legacy8bitWSPSNR"    );  
   CfgParser.addCmdParm("t"  , "NumberOfThreads" , "", "NumberOfThreads"     );
   CfgParser.addCmdParm("ilp", "InterleavedPic"  , "", "InterleavedPic"      );
-  CfgParser.addCmdParm("ipa", "InvalidPelAction", "", "InvalidPelAction"    );
-  CfgParser.addCmdParm("v"  , "VerboseLevel"    , "", "VerboseLevel"        );
-  
+  CfgParser.addCmdParm("ipa", "InvalidPelActn"  , "", "InvalidPelActn"      );
+  CfgParser.addCmdParm("nma", "NameMismatchActn", "", "NameMismatchActn"    );
+  CfgParser.addCmdParm("v"  , "VerboseLevel"    , "", "VerboseLevel"        );  
 
   bool CommandlineResult = CfgParser.loadFromCmdln(argc, argv);
   if(!CommandlineResult) { xCfgINI::printError(std::string("! invalid commandline\n") + CfgParser.getParsingLog() + "\n\n", HelpString); return EXIT_FAILURE; }
@@ -232,8 +238,10 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
   bool        Legacy8bitWSPSNR   = CfgParser.getParam1stArg("Legacy8bitWSPSNR", false          );
   int32       NumberOfThreads    = CfgParser.getParam1stArg("NumberOfThreads" , NOT_VALID      );
   bool        InterleavedPic     = CfgParser.getParam1stArg("InterleavedPic"  , true           );
-  std::string BrokenFileActionS  = CfgParser.getParam1stArg("InvalidPelAction", "STOP"         );
-  eIPA        InvalidPelAction   = xStringToIPA(xString::toUpper(BrokenFileActionS));
+  std::string InvalidPelActnS    = CfgParser.getParam1stArg("InvalidPelActn"  , "STOP"         );
+  eActn       InvalidPelActn     = xStrToActn(InvalidPelActnS);
+  std::string NameMismatchActnS  = CfgParser.getParam1stArg("NameMismatchActn", "WARN"         );
+  eActn       NameMismatchActn   = xStrToActn(NameMismatchActnS);
   bool        Calc__PSNR         = CfgParser.getParam1stArg("Calc__PSNR"      , true           );
   bool        CalcWSPSNR         = CfgParser.getParam1stArg("CalcWSPSNR"      , true           );
   bool        CalcIVPSNR         = CfgParser.getParam1stArg("CalcIVPSNR"      , true           );
@@ -295,7 +303,8 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
     fmt::printf("Legacy8bitWSPSNR = %d\n"  , Legacy8bitWSPSNR );
     fmt::printf("NumberOfThreads  = %d%s\n", NumberOfThreads, NumberOfThreads == NOT_VALID ? "  (all)" : "");
     fmt::printf("InterleavedPic   = %d\n"  , InterleavedPic   );
-    fmt::printf("InvalidPelAction = %s\n"  , xIPAToString(InvalidPelAction));
+    fmt::printf("InvalidPelActn   = %s\n"  , xActnToString(InvalidPelActn  ));
+    fmt::printf("NameMismatchActn = %s\n"  , xActnToString(NameMismatchActn));
     fmt::printf("Calc__PSNR       = %d\n"  , Calc__PSNR       );
     fmt::printf("CalcWSPSNR       = %d\n"  , CalcWSPSNR       );
     fmt::printf("CalcIVPSNR       = %d\n"  , CalcIVPSNR       );
@@ -329,6 +338,22 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
   if (StartFrame[0]<0 || StartFrame[1]<0) { CfgMsg += "!  StartFrame value cannot be negative \n"; }
   if (!CfgMsg.empty()) { xCfgINI::printError(std::string("! Invalid parameters\n") + CfgMsg, HelpString); return EXIT_FAILURE; }
 
+  //validate file params
+  if(NameMismatchActn == eActn::WARN && NameMismatchActn == eActn::STOP)
+  {
+    std::string SeqMsg;
+    for(int32 i = 0; i < 2; i++)
+    {
+      const auto [Valid, Message] = xFileNameScn::validateFileParams(InputFile[0], PictureSize, BitDepth, ChromaFormat);
+      if(!Valid) { SeqMsg += Message; }
+    }
+    if(!SeqMsg.empty())
+    {
+      xCfgINI::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + SeqMsg, HelpString);
+      if(NameMismatchActn == eActn::STOP) { return EXIT_FAILURE; }
+    }
+  }
+
   //check weights
   if constexpr (!xc_USE_RUNTIME_CMPWEIGHTS)
   {
@@ -354,7 +379,7 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
   {
     fmt::printf("PERFORMANCE WARNING: Software was executed with SearchRange wider than default one. This leads to higher computational complexity and longer calculation time. The default range is DefaultSearchRange=%d.\n\n", xIVPSNR::c_DefaultSearchRange);
   }
-  if(xc_USE_RUNTIME_CMPWEIGHTS && ComponentWeights == xIVPSNR::c_DefaultCmpWeights && !X_IVPSNR_CAN_USE_SSE)
+  if(xc_USE_RUNTIME_CMPWEIGHTS && ComponentWeights == xIVPSNR::c_DefaultCmpWeights && !X_CORRESPPIXELSHIFT_CAN_USE_SSE)
   {
     fmt::printf("PERFORMANCE WARNING: Software was build with USE_RUNTIME_CMPWEIGHTS option enabled and default weights was selected. To speed up computation of IV-PSNR with default weights - dissable USE_RUNTIME_CMPWEIGHTS option.\n\n");
   }
@@ -435,8 +460,8 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
     }
   }
 
-  xThreadPool*         ThreadPool = nullptr;
-  xThreadPoolInterface ThreadPoolIf;
+  xThreadPool* ThreadPool = nullptr;
+  tThPI        ThreadPoolIf;
   if(NumberOfThreadsUsed > 0)
   { 
     ThreadPool = new xThreadPool;
@@ -458,7 +483,7 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
   flt64   LastR2T = 0;
   flt64   LastT2R = 0;
   int32   NumNonMasked = 0;
-  if(VerboseLevel >= 4)
+  if(VerboseLevel >= 4 && CalcIVPSNR)
   {
     ProcessorPSNR.setDebugCallbackGCS([&LastGCS          ](const int32V4& GCS  ) { LastGCS = GCS;                });
     ProcessorPSNR.setDebugCallbackQAP([&LastR2T, &LastT2R](flt64 R2T, flt64 T2R) { LastR2T = R2T; LastT2R = T2R; });
@@ -515,10 +540,10 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
       for(int32 i = 0; i < NumInputsCur; i++)
       {
         ThreadPoolIf.addWaitingTask(
-          [&PicInP, &PicInI, &CheckOK, &InputFile, InterleavedPic, InvalidPelAction, i](int32 /*ThreadIdx*/)
+          [&PicInP, &PicInI, &CheckOK, &InputFile, InterleavedPic, InvalidPelActn, i](int32 /*ThreadIdx*/)
           {
-            if(InvalidPelAction!=eIPA::SKIP) { CheckOK[i] = PicInP[i].check(InputFile[i]); }
-            if(InvalidPelAction==eIPA::CNCL && !CheckOK[i]) { PicInP[i].conceal(); }
+            if(InvalidPelActn!=eActn::SKIP) { CheckOK[i] = PicInP[i].check(InputFile[i]); }
+            if(InvalidPelActn==eActn::CNCL && !CheckOK[i]) { PicInP[i].conceal(); }
             PicInP[i].extend();
             if(InterleavedPic && i<2) { PicInI[i].rearrangeFromPlanar(&PicInP[i]); }
           }
@@ -530,14 +555,14 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
     {
       for(int32 i = 0; i < NumInputsCur; i++)
       {
-        if(InvalidPelAction!=eIPA::SKIP) CheckOK[i] = PicInP[i].check(InputFile[i]);
-        if(InvalidPelAction==eIPA::CNCL && !CheckOK[i]) { PicInP[i].conceal(); }
+        if(InvalidPelActn!=eActn::SKIP) CheckOK[i] = PicInP[i].check(InputFile[i]);
+        if(InvalidPelActn==eActn::CNCL && !CheckOK[i]) { PicInP[i].conceal(); }
         PicInP[i].extend();
         if(InterleavedPic && i < 2) { PicInI[i].rearrangeFromPlanar(&PicInP[i]); }
       }
     }
 
-    if(InvalidPelAction==eIPA::STOP)
+    if(InvalidPelActn==eActn::STOP)
     {
       for(int32 i = 0; i < NumInputsCur; i++)
       {
@@ -603,7 +628,7 @@ int32 IVPSNR_MAIN(int argc, char *argv[], char* /*envp*/[])
     if(CalcIVPSNR)
     {
       flt64 IVPSNR = 0.0;
-      if(!InputFile[2].empty())
+      if(UseMask)
       {
         IVPSNR = ProcessorPSNR.calcPicIVPSNRM(&PicInP[0], &PicInP[1], &PicInP[2], &PicInI[0], &PicInI[1]);
       }

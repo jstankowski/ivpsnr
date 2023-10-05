@@ -28,5 +28,35 @@ public:
 
 //===============================================================================================================================================================================================================
 
+class xFileNameScn
+{
+public:
+  static constexpr int32 c_DefChromaFormat = 420;
+  static constexpr int32 c_DefBitDepth     = 8;
+
+  //results
+  enum class eResult : int32
+  {
+    Confident,
+    Probable,
+    Unknown
+  };
+  using tResI32V2 = std::tuple<int32V2, eResult>;
+  using tResI32   = std::tuple<int32  , eResult>;
+  using tValRes   = std::tuple<bool, std::string>;
+
+  static tValRes   validateFileParams(const std::string& FilePath, int32V2 PictureSize, int32 BitDepth, int32 ChromaFormat);
+
+  static tResI32V2 determineResolutionFromFilePath  (const std::string& FilePath);
+  static tResI32   determineChromaFormatFromFilePath(const std::string& FilePath);
+  static tResI32   determineBitDepthFromFilePath    (const std::string& FilePath);
+
+  static tResI32V2 determineResolutionFromString  (const std::string& FileName);
+  static tResI32   determineChromaFormatFromString(const std::string& FileName);
+  static tResI32   determineBitDepthFromString    (const std::string& FileName);
+};
+
+//===============================================================================================================================================================================================================
+
 } //end of namespace PMBB
 

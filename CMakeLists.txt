@@ -190,16 +190,21 @@ if(PMBB_GENERATE_TESTING)
 endif()
 
 #=========================================================================================================================================
+# png read/write library SPNG ()
+#=========================================================================================================================================
+add_subdirectory(thirdparty/spng    thirdparty-spng)
+
+#=========================================================================================================================================
 # library PUT-Multimedia-Building-Blocks
 #=========================================================================================================================================
-add_subdirectory(libs/pmbb-base libpmbb-base)
-add_subdirectory(libs/pmbb-core libpmbb-core)
-add_subdirectory(libs/pmbb-ivqm libpmbb-ivqm)
-
+add_subdirectory(libs/pmbb-base    libpmbb-base)
+add_subdirectory(libs/pmbb-core    libpmbb-core)
+add_subdirectory(libs/pmbb-ivqm    libpmbb-ivqm)
+add_subdirectory(libs/pmbb-spng    libpmbb-spng)
 #=========================================================================================================================================
 # apps
 #=========================================================================================================================================
-add_subdirectory(apps/IVPSNR IVPSNR)
+add_subdirectory(apps/QMIV IVPSNR)
 
 #=========================================================================================================================================
 # debug

@@ -1,8 +1,17 @@
-# IV-PSNR software
+# IV-PSNR software with Quality Merics for Immersive Video
 
 ## 1. Description
 
-The software calculates IV-PSNR, WS-PSNR and PSNR metrics.  
+The software calculates number of quality metrics, especially related to assessment of immersive video quality.
+
+The list of immersive video quality metrics includes: 
+  * IV-PSNR   - Immersive Video - Peak Signal-to-Noise Ratio
+  * IV-SSIM   - Immersive Video - Structural Similarity Index Measure
+
+In addition the software is able to calculate following "general purpose" metrics:
+  * PSNR      - Peak Signal-to-Noise Ratio
+  * WS-PSNR   - Spherical Weighted - Peak Signal-to-Noise Ratio
+  * SSIM      - Structural Similarity Index Measure
 
 The idea behind the IV-PSNR mertric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
 **A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**
@@ -100,22 +109,29 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-i0  | InputFile0       | YUV file path - input sequence 0 |
-|-i1  | InputFile1       | YUV file path - input sequence 1 |
-|-w   | PictureWidth     | Width of input sequence |
-|-h   | PictureHeight    | Height of input sequence |
+|-i0  | InputFile0       | File path - input sequence 0 |
+|-i1  | InputFile1       | File path - input sequence 1 |
+|-ff  | FileFormat       | Format of input sequence (optional, default=RAW) [RAW, PNG] |
+|-ps  | PictureSize      | Size of input sequences (WxH) |
+|-pw  | PictureWidth     | Width of input sequence |
+|-ph  | PictureHeight    | Height of input sequence |
+|-pf  | PictureFormat    | Picture format as defined by FFMPEG pix_fmt i.e. yuv420p10le |
 |-bd  | BitDepth         | Bit depth (optional, default=8, up to 14) |
 |-cf  | ChromaFormat     | Chroma format (optional, default=420) [420, 444] |
 |-s0  | StartFrame0      | Start frame 0 (optional, default=0) |
 |-s1  | StartFrame1      | Start frame 1 (optional, default=0) |
-|-l   | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
-|-o   | ResultFile       | Output file path for printing result(s) (optional) |
+|-nf  | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
+|-r   | ResultFile       | Output file path for printing result(s) (optional) |
+|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, IVSSIM] (optional, default="PSNR, IVPSNR, IVSSIM") |
+
+PictureSize parameter can be used interchangeably with PictureWidth, PictureHeight pair. If PictureSize parameter is present the PictureWidth and PictureHeight arguments are ignored.
+PictureFormat parameter can be used interchangeably with BitDepth, ChromaFormat pair. If PictureFormat parameter is present the BitDepth and, ChromaFormat arguments are ignored.
 
 #### Masked (weighted) mode parameters
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-im  | InputFileM       | YUV file path - mask (optional, same resolution as InputFile0 and InputFile1) |
+|-im  | InputFileM       | File path - mask       (optional, same resolution as InputFile0 and InputFile1) |
 |-bdm | BitDepthM        | Bit depth for mask     (optional, default=BitDepth, up to 16) |
 |-cfm | ChromaFormatM    | Chroma format for mask (optional, default=ChromaFormat) [400, 420, 444] |
 
@@ -127,12 +143,14 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |-lor | LonRangeDeg      | Range for ERP sequence in degrees - Longitudinal (optional, default=360) |
 |-lar | LatRangeDeg      | Range for ERP sequence in degrees - Lateral (optional, default=180) |
 
-####  Metrics parameters
+####  Colorspace parameters
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-rgb | CalcMetricInRGB  | Calculate metrics in RGB color space (flag, default disabled). Enables on-demand convesion from YCbCr to RGB |
-|-cs  | ColorSpace       | Color space of input YUV file (optional, required by CalcMetricInRGB) [BT601, SMPTE170M, BT709, SMPTE240M, BT2020] |
+|-csi | ColorSpaceInput  | Color space of input file             (optional, default=YCbCr)           |
+|-csm | ColorSpaceMetric | Color space used to calculate metrics (optional, default=ColorSpaceInput) |
+
+If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion (RGB-->YCbCr or YCbCr-->RGB). Conversion requires specific YCbCr color space parameters. [RGB, BGR, GBR, YCbCr, YCbCr_BT601, YCbCr_SMPTE170M, YCbCr_BT709, YCbCr_SMPTE240M, YCbCr_BT2020]
 
 #### IV specific parameters
 
@@ -141,13 +159,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |-sr  | SearchRange      | IV-metric search range around center point (optional, default=2 --> 5x5) |
 |-cws | CmpWeightsSearch | IV-metric component weights used during search ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory, requires USE_RUNTIME_CMPWEIGHTS=1) |
 |-cwa | CmpWeightsAverage| IV-metric component weights used during averaging ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory) |
-|-unc | UnnoticeableCoef | IV-metric unnoticable color difference threshold coeff ("Lm:Cb:Cr:0" or "R:G:B:0" - per component coeff, default="0.01:0.01:0.01:0", quotes are mandatory) |
-
-#### WS-PSNR specific parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-ws8 | Legacy8bitWSPSNR | Use 1020 as peak value for 10-bps videos in WSPSNR metric (provides compatibility with original WSPSNR implementation, optional, default=0) |
+|-unc | UnnoticeableCoef | IV-metric unnoticeable color difference threshold coeff ("Lm:Cb:Cr:0" or "R:G:B:0" - per component coeff, default="0.01:0.01:0.01:0", quotes are mandatory) |
 
 #### Validation parameters
 
@@ -160,7 +172,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-t   | NumberOfThreads  | Number of worker threads(optional, default=-2, suggested ~8 for IV-PSNR) [-1 = all available threads, -2 = reasonable auto] |
+|-nth | NumberOfThreads  | Number of worker threads (optional, default=-2, suggested ~8 for IVPSNR, all physical cores for SSIM) [0 = thread pool disabled, -1 = all available threads, -2 = reasonable auto]
 |-ilp | InterleavedPic   | Use additional image buffer with interleaved layout for IV-PSNR, (improves performance at a cost of increased memory usage, optional, default=1) |
 |-v   | VerboseLevel     | Verbose level (optional, default=1) |
 
@@ -173,7 +185,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 #### Dynamic dispatcher parameters
 | Cmd                | Description |
 |:-------------------|:------------|
-| --DispatchForceMFL | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]
+| --DispatchForceMFL | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]. Forcing a selection of microarchitecture level not supported by CPU will lead to "illegal instruction" exception.
 | --DispatchVerbose  | Verbose level for runtime dispatch module (optional, default=0) |
 
 ### 5.2. Verbose level
@@ -185,6 +197,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 | 2 | 1 + argc/argv + frame level metric values |
 | 3 | 2 + computing time (could slightly slow down computations) |
 | 4 | 3 + IV specific debug data (GlobalColorShift, R2T+T2R, NumNonMasked) |
+| 9 | stdout flood |
 
 ### 5.3. Compile-time parameters
 
@@ -197,24 +210,26 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 
 #### 5.4.1. Commandline parameters example
 
-IV-PSNR of *SA_ref.yuv* and *SA_test.yuv*. Sequence resolution is 4096×2048, YUV420, 10 bits per sample. Sequence format is ERP. Mean IV-PSNR calculated for the first 20 frames will be written into IV-PSNR.txt:  
-`IVPSNR -i0 SA_ref.yuv -i1 SA_test.yuv -w 4096 -h 2048 -bd 10 -erp -l 20 -o IV-PSNR.txt`  
+Metrics (PSNR, WS-PSNR, IV-PSNR, and IV-SSIM) of *SA_ref.yuv* and *SA_test.yuv*. Sequence resolution is 4096×2048, YUV420, 10 bits per sample. Sequence format is ERP. Mean metrics calculated for the first 20 frames will be written into IVPSNR.txt:  
+`IVPSNR -i0 SA_ref.yuv -i1 SA_test.yuv -pw 4096 -ph 2048 -bd 10 -erp -nf 20 -r IVPSNR.txt`  
+`IVPSNR -i0 SA_ref.yuv -i1 SA_test.yuv -ps 4096x2048 -pf yuv420p10le -erp -nf 20 -r IVPSNR.txt`  
 
-IV-PSNR of *SD_ref.yuv* and *SD_test.yuv*. Sequence resolution is 2048×1088, YUV420, 8 bits per sample. Sequence format is perspective. Mean IV-PSNR calculated for all frames will be written into results.txt:  
-`IVPSNR -i0 SD_ref.yuv -i1 SD_test.yuv -o results.txt -w 2048 -h 1088`  
+Metrics (all available) of *SD_ref.yuv* and *SD_test.yuv*. Sequence resolution is 2048×1088, YUV420, 8 bits per sample. Sequence format is perspective. Mean metrics calculated for all frames will be written into results.txt:  
+`IVPSNR -i0 SD_ref.yuv -i1 SD_test.yuv -r results.txt -w 2048 -h 1088 -ml "All"`  
 
-IV-PSNR of *SC_ref.yuv* and *SC_test.yuv*. Sequence resolution is 4096×2048, YUV420, 10 bits per sample. Sequence format is ERP, with lateral range equal to 90°. Mean IV-PSNR calculated for 5 frames (frames 0-4 of reference video and 10-14 of test video) will be written into o.txt:  
-`IVPSNR -i0 SC_ref.yuv -i1 SC_test.yuv -w 4096 -h 2048 -erp -lar 90 -l 5 -s1 10 -o o.txt`
+Metrics (PSNR, WS-PSNR and IV-PSNR) of *SC_ref.yuv* and *SC_test.yuv*. Sequence resolution is 4096×2048, YUV420, 10 bits per sample. Sequence format is ERP, with lateral range equal to 90°. Mean IV-PSNR calculated for 5 frames (frames 0-4 of reference video and 10-14 of test video) will be written into o.txt:  
+`IVPSNR -i0 SC_ref.yuv -i1 SC_test.yuv -w 4096 -h 2048 -erp -lar 90 -l 5 -s1 10 -ml "PSNR, WSPSNR, IVPSNR" -r o.txt`
 
 External config file:  
 `IVPSNR -c "config.cfg"`  
 
 External config files with some parameters added/overwritten:  
-`IVPSNR -c "config1st.cfg" -c "config2nd.cfg" -v 1 -t 4`  
+`IVPSNR -c "config1st.cfg" -c "config2nd.cfg" -v 1 -nth 4`  
 
-#### 5.4.2. Config file example
+#### 5.4.2. Config file examples
 
 ```ini
+#config example 1
 InputFile0      = "SA_ref.yuv"
 InputFile1      = "SA_test.yuv"
 PictureWidth    = 4096
@@ -225,9 +240,47 @@ VerboseLevel    = 3
 OutputFile      = "result.txt"
 ```
 
+```ini
+#config example 2
+InputFile0        = "SA_ref.yuv"
+InputFile1        = "SA_test.yuv"
+FileFormat        = RAW
+PictureSize       = 4096x2048
+#PictureWidth     = 4096
+#PictureHeight    = 2048
+PictureFormat     = yuv420p10le
+#BitDepth         = 10
+#ChromaFormat     = 420
+StartFrame0       = 0         
+StartFrame1       = 0
+NumberOfFrames    = -1
+ResultFile        = "IVPSNR.txt"
+MetricList        = "all"
+
+#InputFileM       = "SA_mask.yuv"
+#BitDepthM        = 16
+#ChromaFormatM    = 420
+
+Equirectangular   = 0
+#LonRangeDeg      = 360
+#LatRangeDeg      = 180
+
+#ColorSpaceInput  = YCbCr
+#ColorSpaceMetric = YCbCr
+
+SearchRange       = 2
+CmpWeightsSearch  = "4:1:1:0"
+CmpWeightsAverage = "4:1:1:0"
+#UnnoticeableCoef = "0:0:0:0"
+
+NumberOfThreads   = 12
+InterleavedPic    = 1
+VerboseLevel      = 3
+```
+
 ### 5.5. Pixel values checking notes (InvalidPelActn)
 
-Before calculating the IV-PSNR metric the software scans the content of YUV file in order to evaluate if all pixel values are in range `[0, MaxVal]` where `MaxVal = (1<<BitDepth) - 1`. If invalid pel is detected the software can take following actions based on InvalidPelActn parameter value:
+Before calculating any metric the software scans the content of YUV file in order to evaluate if all pixel values are in range `[0, MaxVal]` where `MaxVal = (1<<BitDepth) - 1`. If invalid pel is detected the software can take following actions based on InvalidPelActn parameter value:
 * SKIP - disable pixel value checking
 * WARN - print warning and ignore invalid pel values (may lead to unreliable metrics value)
 * STOP - print warning and stop execution
@@ -246,21 +299,63 @@ Before opening the YUV file the software tries to derive important video paramet
 * Allowed mask values are `0` (interpreted as inactive pixel) and `(1<<BitDepthM)-1)` (interpreted as active pixel). Behavior for other values is undefined at this moment.
 * The data processing functions for masked mode are not implemented with the use of SIMD instructions leading to slower computations.
 
-### 5.8. RGB mode - requirements and notes
+### 5.8. Colorspace  modes - requirements and notes
 
-* The YCbCr input sequence is internally converted to RGB and metric is calculated on RGB pictures.
-* CalcMetricInRGB option is used to enable this mode and ColorSpace option is used to select color space for YCbCr-->RGB conversion [BT601, BT709, BT2020]
-* If RGB mode is enabled, the ColorSpace argument shall be provided.
-* One can consider changing the CmpWeightsSearch and CmpWeightsAverage. Default values of CmpWeights are designed for YCbCr color space and are equal to 4:1:1:0 for Y:Cb:Cr:0 respectively. For operation in RGB color space it is highly recommended to manuały adjust CmpWeights. The exemplary config entry for RGB case is provided as follows: 
+Optional mode of the IVPSNR software allows to define or convert the colorspace of input sequences and/or colorspace used to calculate metrics. 
+
+The default behavior is to assume generic YCbCr colorspace for both input and metric and perform no conversion. The metric values are decorated with YCbCr or Y:Cb:Cr suffix.
+
+The second option is to use RGB input files and calculate metric in RGB. In this case the IVPSNR software performs no conversion and output metrics labeled as RGB, i.e., PSNR R:G:B PSNR-RGB. To enable this mode use `-csi RGB` input argument. 
+
+When calculating metrics in RGB mode, component weights should be set equal for all three components:
 
 ```ini
-CalcMetricInRGB   = 1         #enable RGB mode
-ColorSpace        = BT709     #use BT.709 color space for conversion
-CmpWeightsSearch  = "1:1:1:0" #use uniform weights during IV search phase
-CmpWeightsAverage = "1:1:1:0" #use uniform weights during IV averaging phase
-``` 
+CmpWeightsAverage = "1:1:1:0"
+CmpWeightsSearch  = "1:1:1:0"
+```
+
+This can be archived using config file or commandline (`-cwa "1:1:1:0" -cws "1:1:1:0"`).
+
+The other path assumes on-demand colorspace conversion. The software is able to perform RGB-to-YCbCr or YCbCr-to-RGB conversion. In this case, a specific variant of YCbCr colorspace (BT601, SMPTE170M, BT709, SMPTE240M, BT2020) have to be defined for input or metric. The valid arguments for YCbCr colorspace variants are [YCbCr_BT601, YCbCr_SMPTE170M, YCbCr_BT709, YCbCr_SMPTE240M, YCbCr_BT2020].
+
+For example, if one wants to use input sequence in BT709 colorspace and calculate metrics in RGB, the following parameters should be used: `-csi YCbCr_BT709 -csm RGB -cwa "1:1:1:0" -cws "1:1:1:0"`.
+
+### 5.9. PNG mode
+
+Optional mode of the IVPSNR software allows to calculate the metrics not for video files, but for lists of indexed images in the PNG format. 
+
+The name of input file should contain format string as defined in C++20 std::format [ISO/IEC 14882:2020] in the form of `{:d}` with optional modifiers. The file name is determined by formatting input string using image index.
+
+The software expects lists of consequently numbered files. The first file index can be equal to 0 or 1. The last file is detected by checking the existence of consecutive files. The first missing index is treated as the end of the file list.
+
+Examples:
+* The list of files {img001.png, img002.png, img003.png} should be specified as `img{:03d}.png`. 
+* The list of files {img000.png, img001.png, img002.png, img004.png}, specified as `img{:03d}.png`, will be processed for 0,1, and 2 indexes only. The `img002.png` will be detected as the last image in list.
+
 
 ## 6. Changelog
+
+### IV-PSNR v7.0 based on QMIV v1.0[N0535]
+
+* changes relative to IV-PSNR software v6.0:
+  * **introduces a set of Structural Similarity related metrics - SSIM and IV-SSIM**
+  * improved arguments parsing and validation
+  * PictureSize argument introduced as (optional) alternative to PictureWidth, PictureHeight pair
+  * PictureFormat argument introduced as (optional) alternative to BitDepth, ChromaFormat pair
+  * improved consistency of selected "cmd" arguments:
+    * PictureWidth `-w`-->`-pw`
+    * PictureHeight `-h`-->`-ph`
+    * NumberOfFrames `-l`-->`-nf`
+    * ResultFile `-o`-->`-r`
+    * NumberOfThreads `-t`-->`-nth`
+  * reduced overhead of computing time measurement (switched from `std::chrono::high_resolution_clock` to `RDTSCP`)
+  * increased precision of printed metric values
+* overhaul of IVPSNR v6.0 RGB mode into generic colorspace mode, including:
+  * consistent metric suffixes,
+  * RGB to YCbCr and YCbCr to RGB conversion,
+  * RGB passthrough mode,
+  * CalcMetricInRGB and ColorSpace arguments replaced by more general set of arguments (ColorSpaceInput, ColorSpaceMetric),
+* input defined as PNG file or list of PNG files.
 
 ### IV-PSNR v6.0 [M68222]
 
@@ -351,6 +446,7 @@ CmpWeightsAverage = "1:1:1:0" #use uniform weights during IV averaging phase
 
 * [IVPSNR] A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications)
 * [IVSOFT] J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)
+* [N0535] J. Stankowski, A. Dziembowski, "Software manual of QMIV", ISO/IEC JTC1/SC29/WG04 MPEG VC/N0535, July 2024, Sapporo, Japan.
 * [M68222] J. Stankowski, A. Dziembowski, "The final version of the IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M68222, July 2024, Sapporo, Japan.
 * [M64727] J. Stankowski, A. Dziembowski, "Optimized IV-PSNR software with invalid pixel detection", ISO/IEC JTC1/SC29/WG04 MPEG VC/M64727, October 2023, Hannover, Germany.
 * [M59974] J. Stankowski, A. Dziembowski, "Improved IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M59974, July 2021, Online.

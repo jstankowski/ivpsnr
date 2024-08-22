@@ -204,7 +204,7 @@ static inline uint16 _mm256_hmax_epu16(__m256i Src_U16_V) //horizontal max
 static inline uint32 _mm256_hmax_epu32(__m256i Src_U32_V) //horizontal max
 {
   __m128i Max_U32_V = _mm256_lmax_epu32(Src_U32_V);
-  uint16 Max = _mm_hmax_epu32(Max_U32_V);
+  uint32 Max = _mm_hmax_epu32(Max_U32_V);
   return Max;
 }
 #endif //X_SIMD_CAN_USE_AVX
@@ -225,10 +225,10 @@ static inline uint16 _mm512_hmax_epu16(__m512i Src_U16_V) //horizontal max
   uint16 Max = _mm256_hmax_epu16(Max_U16_V);
   return Max;
 }
-static inline uint16 _mm512_hmax_epu32(__m512i Src_U32_V) //horizontal max
+static inline uint32 _mm512_hmax_epu32(__m512i Src_U32_V) //horizontal max
 {
   __m256i Max_U32_V = _mm256_max_epu32(_mm512_castsi512_si256(Src_U32_V), _mm512_extracti64x4_epi64(Src_U32_V, 1));
-  uint16 Max = _mm256_hmax_epu32(Max_U32_V);
+  uint32 Max = _mm256_hmax_epu32(Max_U32_V);
   return Max;
 }
 

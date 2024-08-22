@@ -13,7 +13,7 @@ namespace PMBB_NAMESPACE {
 //===============================================================================================================================================================================================================
 // xSSIM
 //===============================================================================================================================================================================================================
-void xSSIM::create(int32V2 Size, int32 BitDepth, int32 /*Margin*/)
+void xSSIM::create(int32V2 Size, int32 BitDepth, int32 /*Margin*/, bool EnableMS)
 {
   m_Size        = Size;
   m_BitDepth    = BitDepth;
@@ -26,12 +26,30 @@ void xSSIM::create(int32V2 Size, int32 BitDepth, int32 /*Margin*/)
   { 
     m_RowSums[CmpIdx].resize(Size.getY(), 0.0);
   }
+
+  if(EnableMS)
+  {
+    int32V2 LastSize = Size;
+    for(int32 i = 1; i < c_NumMultiScales; i++)
+    {
+      int32V2 NewSize = LastSize >> 1;
+      m_SubPicTst[i] = new xPicP(NewSize, BitDepth, 0);
+      m_SubPicRef[i] = new xPicP(NewSize, BitDepth, 0);
+      LastSize = NewSize;
+    }
+  }
 }
 void xSSIM::destroy()
 {
   m_Size = { NOT_VALID, NOT_VALID };
   m_C1   = std::numeric_limits<fltTP>::quiet_NaN();
   m_C2   = std::numeric_limits<fltTP>::quiet_NaN();
+
+  for(int32 i = 1; i < c_NumMultiScales; i++)
+  {
+    if(m_SubPicTst[i]) { m_SubPicTst[i]->destroy(); delete m_SubPicTst[i]; m_SubPicTst[i] = nullptr; }
+    if(m_SubPicRef[i]) { m_SubPicRef[i]->destroy(); delete m_SubPicRef[i]; m_SubPicRef[i] = nullptr; }
+  }
 }
 flt64V4 xSSIM::calcPicSSIM(const xPicP* Tst, const xPicP* Ref, bool CalcL)
 {
@@ -46,6 +64,27 @@ flt64V4 xSSIM::calcPicSSIM(const xPicP* Tst, const xPicP* Ref, bool CalcL)
 
   return SSIM;
 }
+flt64V4 xSSIM::calcPicMSSSIM(const xPicP* Tst, const xPicP* Ref)
+{
+  assert(Ref != nullptr && Tst != nullptr);
+  assert(Ref->isCompatible(Tst) && Ref->isSameSize(m_Size) && Ref->isSameBitDepth(m_BitDepth));
+
+  std::array<flt64V4, c_NumMultiScales> m_SubScores = { xMakeVec4<flt64>(0) };
+
+  m_SubScores[0] = calcPicSSIM(Tst, Ref, false);
+  for(int32 i = 1; i < c_NumMultiScales; i++)
+  {
+    if(i == 1) { xDownsamplePic(m_SubPicTst[i], Tst             ); xDownsamplePic(m_SubPicRef[i], Ref             ); }
+    else       { xDownsamplePic(m_SubPicTst[i], m_SubPicTst[i-1]); xDownsamplePic(m_SubPicRef[i], m_SubPicRef[i-1]); }
+
+    m_SubScores[i] = calcPicSSIM(m_SubPicTst[i], m_SubPicRef[i], i != c_NumMultiScales -1);
+  }
+
+  flt64V4 CompoundScore = xMakeVec4<flt64>(1);
+  for(int32 i = 0; i < c_NumMultiScales; i++) { CompoundScore = CompoundScore * m_SubScores[i].getVecPow1(c_MultiScaleWghts<flt64>[i]); }
+
+  return CompoundScore;
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -58,7 +97,7 @@ flt64 xSSIM::xCalcCmpSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, bool C
 
   for(int32 y = c_FilterRange; y < Height - c_FilterRange; y++)
   {
-    m_ThPI.addWaitingTask([this, &Tst, &Ref, CmpId, y, CalcL](int32 ) { m_RowSums[(int32)CmpId][y] = xCalcRowSSIM(Tst, Ref, CmpId, y); });
+    m_ThPI.addWaitingTask([this, &Tst, &Ref, CmpId, y, CalcL](int32 ) { m_RowSums[(int32)CmpId][y] = xCalcRowSSIM(Tst, Ref, CmpId, y, CalcL); });
   }
   m_ThPI.waitUntilTasksFinished(Height - 2 * c_FilterRange);
 
@@ -72,7 +111,7 @@ flt64 xSSIM::xCalcCmpSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, bool C
   flt64 SSIM = PicSumSSIM / (flt64)NumActive;
   return SSIM;
 }
-flt64 xSSIM::xCalcRowSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, const int32 y)
+flt64 xSSIM::xCalcRowSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, const int32 y, bool CalcL)
 {
   const int32   Width     = Ref->getWidth ();
   const int32   TstStride = Tst->getStride();
@@ -81,22 +120,40 @@ flt64 xSSIM::xCalcRowSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, const 
   const uint16* RefPtr    = Ref->getAddr(CmpId) + y * RefStride;
   
   flt64 RowSumSSIM = 0.0;
+  if(CalcL)
+  {
+    for(int32 x = c_FilterRange; x < Width - c_FilterRange; x++)
+    {
+      flt64 PelSSIM = xStructSim<fltTP, true>::CalcPel(TstPtr + x, RefPtr + x, TstStride, RefStride, c_FilterF, m_C1, m_C2);
+      RowSumSSIM += PelSSIM;
+    }
+  }
+else
+{
   for(int32 x = c_FilterRange; x < Width - c_FilterRange; x++)
   {
-    flt64 PelSSIM = xStructSim<fltTP>::CalcPel(TstPtr + x, RefPtr + x, TstStride, RefStride, c_FilterF, m_C1, m_C2);
+    flt64 PelSSIM = xStructSim<fltTP, false>::CalcPel(TstPtr + x, RefPtr + x, TstStride, RefStride, c_FilterF, m_C1, m_C2);
     RowSumSSIM += PelSSIM;
   }
+}
 
   return RowSumSSIM;
+}
+void xSSIM::xDownsamplePic(xPicP* Dst, const xPicP* Src)
+{
+  for(int32 CmpIdx = 0; CmpIdx < 3; CmpIdx++)
+  {
+    xPixelOps::DownsampleHV(Dst->getAddr((eCmp)CmpIdx), Src->getAddr((eCmp)CmpIdx), Dst->getStride(), Src->getStride(), Dst->getWidth(), Dst->getHeight());
+  }
 }
 
 //===============================================================================================================================================================================================================
 // xIVSSIM
 //===============================================================================================================================================================================================================
 
-void xIVSSIM::create(int32V2 Size, int32 BitDepth, int32 Margin)
+void xIVSSIM::create(int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS)
 {
-  xSSIM::create(Size, BitDepth, Margin);
+  xSSIM::create(Size, BitDepth, Margin, EnableMS);
   m_TstSCP = new xPicP(Size, BitDepth, Margin);
   m_RefSCP = new xPicP(Size, BitDepth, Margin);
 }

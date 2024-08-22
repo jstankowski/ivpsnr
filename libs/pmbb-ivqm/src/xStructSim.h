@@ -13,7 +13,7 @@ namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
 
-template <class fltTP> class xStructSim : public xStructSimConsts //Structural Similarity
+template <class fltTP, bool CalcL> class xStructSim : public xStructSimConsts //Structural Similarity
 {
 public:
   static constexpr fltTP c_InvFltrArea  = (fltTP)1.0 / (fltTP)c_FilterArea;
@@ -26,8 +26,10 @@ public:
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #ifndef PMBB_STRUCTSIM_IMPLEMENTATION
-extern template class xStructSim<flt32>;
-extern template class xStructSim<flt64>;
+extern template class xStructSim<flt32, false>;
+extern template class xStructSim<flt32, true >;
+extern template class xStructSim<flt64, false>;
+extern template class xStructSim<flt64, true >;
 #endif // !PMBB_STRUCTSIM_IMPLEMENTATION
 
 //===============================================================================================================================================================================================================

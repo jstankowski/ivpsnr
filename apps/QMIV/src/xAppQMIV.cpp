@@ -17,7 +17,7 @@ namespace PMBB_NAMESPACE {
 const std::string_view xAppQMIV::c_BannerString =
 R"PMBBRAWSTRING(
 =============================================================================
-IVPSNR software v7.0
+IVPSNR software v7.1
 
 Copyright (c) 2020-2024, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
@@ -28,6 +28,10 @@ The IV-PSNR metric is described in following paper:
 A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR - The Objective Quality Metric for Immersive Video Applications," in IEEE Transactions on Circuits and Systems for Video Technology, vol. 32, no. 11, pp. 7575-7591, Nov. 2022, doi: 10.1109/TCSVT.2022.3179575.
 https://doi.org/10.1109/TCSVT.2022.3179575
 
+The IV-SSIM metric is described in following paper:
+A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: 10.3390/app14167090.
+https://doi.org/10.3390/app14167090
+
 =============================================================================
 
 )PMBBRAWSTRING";
@@ -35,7 +39,7 @@ https://doi.org/10.1109/TCSVT.2022.3179575
 const std::string_view xAppQMIV::c_HelpString =
 R"PMBBRAWSTRING(
 =============================================================================
-IVPSNR software v7.0
+IVPSNR software v7.1
 
  Cmd | ParamName        | Description
 
@@ -55,7 +59,7 @@ usage::general --------------------------------------------------------------
  -r    ResultFile         Output file path for printing result(s) (optional)
  -ml   MetricList         List of quality metrics to be calculated, must be coma separated,
                           quotes are required. "All" enables all available metrics.
-                          [PSNR, WSPSNR, IVPSNR, SSIM, IVSSIM]
+                          [PSNR, WSPSNR, IVPSNR, SSIM, MSSSIM, IVSSIM]
                           (optional, default="PSNR, WSPSNR, IVPSNR, IVSSIM")       
 
 PictureSize parameter can be used interchangeably with PictureWidth, PictureHeight pair. If PictureSize parameter is present the PictureWidth and PictureHeight arguments are ignored.
@@ -319,7 +323,7 @@ bool xAppQMIV::readConfiguration()
   m_CvtRGB2YCbCr = isRGB(m_ColorSpaceInput) && isDefinedYCbCr(m_ColorSpaceMetric);
   m_ReorderRGB   = isRGB(m_ColorSpaceInput) && m_ColorSpaceInput != eClrSpcApp::RGB && m_ColorSpaceMetric == eClrSpcApp::RGB;
   m_CalcPSNRs    = getCalcMetric(eMetric::PSNR) || getCalcMetric(eMetric::WSPSNR) || getCalcMetric(eMetric::IVPSNR);
-  m_CalcSSIMs    = getCalcMetric(eMetric::SSIM) || getCalcMetric(eMetric::IVSSIM);
+  m_CalcSSIMs    = getCalcMetric(eMetric::SSIM) || getCalcMetric(eMetric::MSSSIM) || getCalcMetric(eMetric::IVSSIM);
   m_CalcIVs      = getCalcMetric(eMetric::IVPSNR) || getCalcMetric(eMetric::IVSSIM);
   m_CalcSCP      = getCalcMetric(eMetric::IVSSIM);
   m_CalcGCD      = m_CalcIVs || m_CalcSCP;
@@ -618,7 +622,7 @@ void xAppQMIV::createProcessors()
 
   if(m_CalcSSIMs)
   {
-    m_ProcSSIM.create(m_PictureSize, m_BitDepth, m_PicMargin);
+    m_ProcSSIM.create(m_PictureSize, m_BitDepth, m_PicMargin, true);
     m_ProcSSIM.setSearchRange      (m_SearchRange      );
     m_ProcSSIM.setCmpWeightsSearch (m_CmpWeightsSearch );
     m_ProcSSIM.setCmpWeightsAverage(m_CmpWeightsAverage);
@@ -716,9 +720,13 @@ eRes xAppQMIV::processAllFrames()
 
     uint64 T9 = m_GatherTime ? xTSC() : 0;
 
-    if(getCalcMetric(eMetric::  IVSSIM)) { calcFrame__IVSSIM(f); }
+    if(getCalcMetric(eMetric::  MSSSIM)) { calcFrame__MSSSIM(f); }
 
     uint64 T10 = m_GatherTime ? xTSC() : 0;
+
+    if(getCalcMetric(eMetric::  IVSSIM)) { calcFrame__IVSSIM(f); }
+
+    uint64 T11 = m_GatherTime ? xTSC() : 0;
 
     if(m_GatherTime)
     {
@@ -731,7 +739,8 @@ eRes xAppQMIV::processAllFrames()
       m_MetricData[(int32)eMetric::  WSPSNR].addTicks(T7  - T6 );
       m_MetricData[(int32)eMetric::  IVPSNR].addTicks(T8  - T7 );
       m_MetricData[(int32)eMetric::    SSIM].addTicks(T9  - T8 );
-      m_MetricData[(int32)eMetric::  IVSSIM].addTicks(T10 - T9 );
+      m_MetricData[(int32)eMetric::  MSSSIM].addTicks(T10 - T9 );
+      m_MetricData[(int32)eMetric::  IVSSIM].addTicks(T11 - T10);
     }
   } //end of loop over frames
 
@@ -904,6 +913,14 @@ void xAppQMIV::calcFrame____SSIM(int32 FrameIdx)
     fmt::print("Frame {:08d} {}\n", FrameIdx, m_MetricData[(int32)eMetric::SSIM].formatPerPicMetric(FrameIdx));
   }
 }
+void xAppQMIV::calcFrame__MSSSIM(int32 FrameIdx)
+{
+  flt64V4 MSSSIM = m_ProcSSIM.calcPicMSSSIM(&m_PicInP[0], &m_PicInP[1]);
+  m_MetricData[(int32)eMetric::MSSSIM].setPerCmpMeric(MSSSIM, FrameIdx);
+
+  fmt::print("Frame {:08d} {}\n", FrameIdx, m_MetricData[(int32)eMetric::MSSSIM].formatPerCmpMetric(FrameIdx));
+  fmt::print("Frame {:08d} {}\n", FrameIdx, m_MetricData[(int32)eMetric::MSSSIM].formatPerPicMetric(FrameIdx));
+}
 void xAppQMIV::calcFrame__IVSSIM(int32 FrameIdx)
 {
   flt64 IVSSIM = m_ProcSSIM.calcPicIVSSIM(&m_PicInP[0], &m_PicInP[1], &m_PicSCP[0], &m_PicSCP[1]);
@@ -1002,6 +1019,7 @@ std::string xAppQMIV::formatResultsStdOut()
           case eMetric::  WSPSNR: break;
           case eMetric::  IVPSNR: PreMetricOps += AvgDuration_____GCD; break;
           case eMetric::    SSIM: break;
+          case eMetric::  MSSSIM: break;
           case eMetric::  IVSSIM: PreMetricOps += AvgDuration_____GCD + AvgDuration_____SCP; break;
           default: break;
         }

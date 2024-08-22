@@ -125,6 +125,7 @@ enum class eMetric : int32 //values must start from 0 and be continous
     IVPSNR,
   //SSIM - based
       SSIM,
+    MSSSIM,
     IVSSIM,
   //must be after last metric
   __NUM  
@@ -137,6 +138,7 @@ static inline eMetric xStrToMetric(const std::string_view Metric)
          MetricU ==   "WSPSNR" ? eMetric::  WSPSNR :
          MetricU ==   "IVPSNR" ? eMetric::  IVPSNR :
          MetricU ==     "SSIM" ? eMetric::    SSIM :
+         MetricU ==   "MSSSIM" ? eMetric::  MSSSIM :
          MetricU ==   "IVSSIM" ? eMetric::  IVSSIM :
                                  eMetric::UNDEFINED;
 }
@@ -146,6 +148,7 @@ static inline std::string xMetricToStr(eMetric Metric)
          Metric == eMetric::  WSPSNR ?   "WSPSNR" :
          Metric == eMetric::  IVPSNR ?   "IVPSNR" :
          Metric == eMetric::    SSIM ?     "SSIM" :
+         Metric == eMetric::  MSSSIM ?   "MSSSIM" :
          Metric == eMetric::  IVSSIM ?   "IVSSIM" :
                                        "UNDEFINED";
 }
@@ -155,17 +158,18 @@ struct xMetricInfo
   static constexpr int32 MetricsNum       = (int32)eMetric::__NUM;
   static constexpr int32 MaxMetricNameLen = 8;
 
-                                                          //     PSNR   WSPSNR IVPSNR SSIM   IVSSIM 
-  static constexpr bool             IsPerCmp    [MetricsNum] = { true , true , false, true , false };
-  static constexpr bool             IsPerPic    [MetricsNum] = { false, false, true , false, true  };
-  static constexpr bool             IsNormalized[MetricsNum] = { false, false, false, true , true  };
-  static constexpr std::string_view Unit        [MetricsNum] = { "dB" , "dB" , "dB" , "  " , "  "  };
+                                                          //     PSNR   WSPSNR IVPSNR SSIM   MSSSIM IVSSIM 
+  static constexpr bool             IsPerCmp    [MetricsNum] = { true , true , false, true , true , false  };
+  static constexpr bool             IsPerPic    [MetricsNum] = { false, false, true , false, false, true   };
+  static constexpr bool             IsNormalized[MetricsNum] = { false, false, false, true , true , true   };
+  static constexpr std::string_view Unit        [MetricsNum] = { "dB" , "dB" , "dB" , "  " , "  " , "  "   };
   static constexpr std::string_view Description [MetricsNum] =
   {
     "Peak Signal-to-Noise Ratio",
     "Spherical Weighted - Peak Signal-to-Noise Ratio",
     "Immersive Video - Peak Signal-to-Noise Ratio",
     "Structural Similarity Index Measure",
+    "Multi Scale Structural Similarity Index Measure",
     "Immersive Video - Structural Similarity Index Measure",
   };
 };
@@ -469,6 +473,7 @@ public:
   void        calcFrame__WSPSNR(int32 FrameIdx);
   void        calcFrame__IVPSNR(int32 FrameIdx);
   void        calcFrame____SSIM(int32 FrameIdx);
+  void        calcFrame__MSSSIM(int32 FrameIdx);
   void        calcFrame__IVSSIM(int32 FrameIdx);
 
   std::string calibrateTimeStamp();

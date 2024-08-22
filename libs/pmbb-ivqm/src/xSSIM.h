@@ -22,7 +22,7 @@ class xSSIM : public xMetricCommon, public xStructSimConsts, public xWeightedSph
 {
 public:
   using fltTP  = flt64;
-  using tFltrF = xStructSim<fltTP>::tFltrF;
+  using tFltrF = xStructSim<fltTP, true>::tFltrF;
 
 protected:
   int32V2 m_Size        = { NOT_VALID, NOT_VALID };
@@ -32,15 +32,22 @@ protected:
 
   std::vector<flt64> m_RowSums[4];
 
+protected: //MSSSIM 
+  xPicP* m_SubPicTst[c_NumMultiScales] = { nullptr };
+  xPicP* m_SubPicRef[c_NumMultiScales] = { nullptr };
+
 public:
-  virtual void create (int32V2 Size, int32 BitDepth, int32 Margin);
+  virtual void create (int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS);
   virtual void destroy();
 
   flt64V4 calcPicSSIM  (const xPicP* Tst, const xPicP* Ref, bool CalcL = true);
+  flt64V4 calcPicMSSSIM(const xPicP* Tst, const xPicP* Ref);
 
 protected:  
   flt64   xCalcCmpSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, bool CalcL);
-  flt64   xCalcRowSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, const int32 y);
+  flt64   xCalcRowSSIM(const xPicP* Tst, const xPicP* Ref, eCmp CmpId, const int32 y, bool CalcL);
+
+  static void xDownsamplePic(xPicP* Dst, const xPicP* Src);
 };
 
 //===============================================================================================================================================================================================================
@@ -64,7 +71,7 @@ protected:
   xPicP* m_RefSCP = nullptr;
 
 public:
-  virtual void create (int32V2 Size, int32 BitDepth, int32 Margin);
+  virtual void create (int32V2 Size, int32 BitDepth, int32 Margin, bool EnableMS);
   virtual void destroy();
 
   flt64 calcPicIVSSIM  (const xPicP* Tst, const xPicP* Ref);

@@ -12,9 +12,13 @@ In addition the software is able to calculate following "general purpose" metric
   * PSNR      - Peak Signal-to-Noise Ratio
   * WS-PSNR   - Spherical Weighted - Peak Signal-to-Noise Ratio
   * SSIM      - Structural Similarity Index Measure
+  * MS-SSIM   - Multi Scale Structural Similarity Index Measure
 
 The idea behind the IV-PSNR mertric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
-**A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**
+**A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**  
+
+The idea behind the IV-SSIM mertric, its detailed description and evaluation can be found in the paper [IVSSIM]:  
+**A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090)**  
 
 The IV-PSNR software and its architecture is described in following paper [IVSOFT]:
 **J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)**
@@ -122,7 +126,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |-s1  | StartFrame1      | Start frame 1 (optional, default=0) |
 |-nf  | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
 |-r   | ResultFile       | Output file path for printing result(s) (optional) |
-|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, IVSSIM] (optional, default="PSNR, IVPSNR, IVSSIM") |
+|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, MSSSIM, IVSSIM] (optional, default="PSNR, IVPSNR, IVSSIM") |
 
 PictureSize parameter can be used interchangeably with PictureWidth, PictureHeight pair. If PictureSize parameter is present the PictureWidth and PictureHeight arguments are ignored.
 PictureFormat parameter can be used interchangeably with BitDepth, ChromaFormat pair. If PictureFormat parameter is present the BitDepth and, ChromaFormat arguments are ignored.
@@ -335,7 +339,11 @@ Examples:
 
 ## 6. Changelog
 
-### IV-PSNR v7.0 based on QMIV v1.0[N0535]
+### IV-PSNR v7.1
+
+* added calculation of MS-SSIM (Multi Scale SSIM) metric 
+
+### IV-PSNR v7.0 (based on QMIV v1.0) [N0535]
 
 * changes relative to IV-PSNR software v6.0:
   * **introduces a set of Structural Similarity related metrics - SSIM and IV-SSIM**
@@ -445,6 +453,7 @@ Examples:
 ## 7. References
 
 * [IVPSNR] A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications)
+* [IVSSIM] A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090)
 * [IVSOFT] J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)
 * [N0535] J. Stankowski, A. Dziembowski, "Software manual of QMIV", ISO/IEC JTC1/SC29/WG04 MPEG VC/N0535, July 2024, Sapporo, Japan.
 * [M68222] J. Stankowski, A. Dziembowski, "The final version of the IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M68222, July 2024, Sapporo, Japan.

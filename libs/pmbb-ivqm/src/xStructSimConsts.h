@@ -23,6 +23,9 @@ public:
   template<class XXX> static constexpr XXX c_K1    = XXX(0.01);
   template<class XXX> static constexpr XXX c_K2    = XXX(0.03);
 
+  static constexpr int32                   c_NumMultiScales = 5;
+  template<class XXX> static constexpr XXX c_MultiScaleWghts[c_NumMultiScales] = { XXX(0.0448), XXX(0.2856), XXX(0.3001), XXX(0.2363), XXX(0.1333) };
+
   using tFltrF = std::array< std::array <flt32, c_FilterSize>, c_FilterSize>;
 
   static constexpr tFltrF c_FilterF =

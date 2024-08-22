@@ -107,7 +107,7 @@ void xPixelOpsAVX512::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStrid
     } //y
   }
 }
-void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   const __m512i PermCtlV = _mm512_setr_epi64(0, 4, 1, 5, 2, 6, 3, 7);
   uint16* restrict DstL0 = Dst;
@@ -120,7 +120,7 @@ void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* restrict Sr
       for(int32 x=0; x<DstWidth; x+=64)
       {
         __m512i SrcVt  = _mm512_loadu_si512((__m512i*)&Src[x>>1]);
-        __m512i SrcV   = _mm512_permutexvar_epi64(PermCtlV, SrcVt); //fix AVX per lane mess
+        __m512i SrcV   = _mm512_permutexvar_epi64(PermCtlV, SrcVt); //fix AVX512 per lane mess
         __m512i LeftV  = _mm512_unpacklo_epi16(SrcV, SrcV);
         __m512i RightV = _mm512_unpackhi_epi16(SrcV, SrcV);
         _mm512_storeu_si512((__m512i*)&DstL0[x   ], LeftV );
@@ -167,6 +167,84 @@ void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* restrict Sr
       Src   += SrcStride;
       DstL0 += (DstStride << 1);
       DstL1 += (DstStride << 1);
+    } //y
+  }
+}
+void xPixelOpsAVX512::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+{
+  const __m512i PermCtlV  = _mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7);
+  const __m512i One_U16_V = _mm512_set1_epi16((int16)1);
+  const __m512i Two_I32_V = _mm512_set1_epi32((int32)2);
+  const uint16* SrcL0     = Src;
+  const uint16* SrcL1     = Src + SrcStride;
+
+  if(((uint32)DstWidth & (uint32)c_RemainderMask32) == 0) //Width%32==0
+  {
+    for(int32 y = 0; y < DstHeight; y++)
+    {
+      for(int32 x = 0; x < DstWidth; x += 32)
+      {
+        const int32 SrcX = x << 1;
+        __m512i TopLeft_U16_V     = _mm512_loadu_si512((__m512i*)&SrcL0[SrcX   ]);
+        __m512i TopRight_U16_V    = _mm512_loadu_si512((__m512i*)&SrcL0[SrcX+32]);
+        __m512i BottomLeft_U16_V  = _mm512_loadu_si512((__m512i*)&SrcL1[SrcX   ]);
+        __m512i BottomRight_U16_V = _mm512_loadu_si512((__m512i*)&SrcL1[SrcX+32]);
+        __m512i Left_U16_V        = _mm512_add_epi16(TopLeft_U16_V , BottomLeft_U16_V );
+        __m512i Right_U16_V       = _mm512_add_epi16(TopRight_U16_V, BottomRight_U16_V);
+        __m512i Left_I32_V        = _mm512_srai_epi32(_mm512_add_epi32(_mm512_madd_epi16(Left_U16_V , One_U16_V), Two_I32_V), 2);
+        __m512i Right_I32_V       = _mm512_srai_epi32(_mm512_add_epi32(_mm512_madd_epi16(Right_U16_V, One_U16_V), Two_I32_V), 2);
+        __m512i Out_U16_V         = _mm512_packus_epi32(Left_I32_V, Right_I32_V);
+        __m512i OutP_U16_V        = _mm512_permutexvar_epi64(PermCtlV, Out_U16_V); //fix AVX512 per lane mess
+        _mm512_storeu_si512((__m512i*)&Dst[x], OutP_U16_V);
+      } //x
+      SrcL0 += (SrcStride << 1);
+      SrcL1 += (SrcStride << 1);
+      Dst   += DstStride;
+    } //y
+  }
+  else
+  {
+    const int32  SrcWidth    = (DstWidth << 1);
+    const int32  Width32     = (int32)((uint32)DstWidth & c_MultipleMask32);
+    const int32  Width64     = (int32)((uint32)SrcWidth & c_MultipleMask64);
+    const uint32 Remainder32 = (uint32)DstWidth & c_RemainderMask32;
+    const uint32 MaskS       = ((uint32)1 << Remainder32) - 1;
+    const uint64 Remainder64 = (uint32)SrcWidth & c_RemainderMask64;
+    const uint64 MaskL       = ((uint64)1 << Remainder64) - 1;
+    const uint32 MaskL1      = (uint32)(MaskL & 0xFFFFFFFF);
+    const uint32 MaskL2      = (uint32)(MaskL >>32);
+
+    for(int32 y = 0; y < DstHeight; y++)
+    {
+      for(int32 x = 0; x < Width32; x += 32)
+      {
+        const int32 SrcX = x << 1;
+        __m512i TopLeft_U16_V     = _mm512_loadu_si512((__m512i*)&SrcL0[SrcX   ]);
+        __m512i TopRight_U16_V    = _mm512_loadu_si512((__m512i*)&SrcL0[SrcX+32]);
+        __m512i BottomLeft_U16_V  = _mm512_loadu_si512((__m512i*)&SrcL1[SrcX   ]);
+        __m512i BottomRight_U16_V = _mm512_loadu_si512((__m512i*)&SrcL1[SrcX+32]);
+        __m512i Left_U16_V        = _mm512_add_epi16(TopLeft_U16_V , BottomLeft_U16_V );
+        __m512i Right_U16_V       = _mm512_add_epi16(TopRight_U16_V, BottomRight_U16_V);
+        __m512i Left_I32_V        = _mm512_srai_epi32(_mm512_add_epi32(_mm512_madd_epi16(Left_U16_V , One_U16_V), Two_I32_V), 2);
+        __m512i Right_I32_V       = _mm512_srai_epi32(_mm512_add_epi32(_mm512_madd_epi16(Right_U16_V, One_U16_V), Two_I32_V), 2);
+        __m512i Out_U16_V         = _mm512_packus_epi32(Left_I32_V, Right_I32_V);
+        __m512i OutP_U16_V        = _mm512_permutexvar_epi64(PermCtlV, Out_U16_V); //fix AVX512 per lane mess
+        _mm512_storeu_si512((__m512i*)&Dst[x], OutP_U16_V);
+      } //x
+      __m512i TopLeft_U16_V     =          _mm512_maskz_loadu_epi16(MaskL1, (__m512i*)&SrcL0[Width64    ])                         ;
+      __m512i TopRight_U16_V    = MaskL2 ? _mm512_maskz_loadu_epi16(MaskL2, (__m512i*)&SrcL0[Width64 +32]) : _mm512_setzero_si512();
+      __m512i BottomLeft_U16_V  =          _mm512_maskz_loadu_epi16(MaskL1, (__m512i*)&SrcL1[Width64    ])                         ;
+      __m512i BottomRight_U16_V = MaskL2 ? _mm512_maskz_loadu_epi16(MaskL2, (__m512i*)&SrcL1[Width64 +32]) : _mm512_setzero_si512();
+      __m512i Left_U16_V        = _mm512_add_epi16(TopLeft_U16_V , BottomLeft_U16_V );
+      __m512i Right_U16_V       = _mm512_add_epi16(TopRight_U16_V, BottomRight_U16_V);
+      __m512i Left_I32_V        = _mm512_srai_epi32(_mm512_add_epi32(_mm512_madd_epi16(Left_U16_V , One_U16_V), Two_I32_V), 2);
+      __m512i Right_I32_V       = _mm512_srai_epi32(_mm512_add_epi32(_mm512_madd_epi16(Right_U16_V, One_U16_V), Two_I32_V), 2);
+      __m512i Out_U16_V         = _mm512_packus_epi32(Left_I32_V, Right_I32_V);
+      __m512i OutP_U16_V        = _mm512_permutexvar_epi64(PermCtlV, Out_U16_V); //fix AVX512 per lane mess
+      _mm512_mask_storeu_epi16((__m512i*)&Dst[Width32], MaskS, OutP_U16_V);
+      SrcL0 += (SrcStride << 1);
+      SrcL1 += (SrcStride << 1);
+      Dst   += DstStride;
     } //y
   }
 }
@@ -267,7 +345,7 @@ void xPixelOpsAVX512::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int3
     } //y
   }
 }
-bool xPixelOpsAVX512::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
+bool xPixelOpsAVX512::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
 {
   if(BitDepth == 16) { return true; }
 
@@ -425,6 +503,138 @@ void xPixelOpsAVX512::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA,
     } //y
   }
 }
+void xPixelOpsAVX512::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, uint16* restrict DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
+{
+  const __m512i PermCtlV = _mm512_setr_epi32(0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15);
+
+  if(((uint32)Width & (uint32)c_RemainderMask32) == 0) //Width%32==0
+  {
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width; x += 32)
+      {
+        //load
+        __m512i abcd_U16_V0 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 0 ]);
+        __m512i abcd_U16_V1 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 32]);
+        __m512i abcd_U16_V2 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 64]);
+        __m512i abcd_U16_V3 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 96]);
+
+        //transpose
+        __m512i ac_U16_V0 = _mm512_unpacklo_epi16(abcd_U16_V0, abcd_U16_V1);
+        __m512i ac_U16_V1 = _mm512_unpackhi_epi16(abcd_U16_V0, abcd_U16_V1);
+        __m512i bd_U16_V0 = _mm512_unpacklo_epi16(abcd_U16_V2, abcd_U16_V3);
+        __m512i bd_U16_V1 = _mm512_unpackhi_epi16(abcd_U16_V2, abcd_U16_V3);
+
+        __m512i a_U16_V0 = _mm512_unpacklo_epi16(ac_U16_V0, ac_U16_V1);
+        __m512i b_U16_V0 = _mm512_unpackhi_epi16(ac_U16_V0, ac_U16_V1);
+        __m512i c_U16_V0 = _mm512_unpacklo_epi16(bd_U16_V0, bd_U16_V1);
+        __m512i d_U16_V0 = _mm512_unpackhi_epi16(bd_U16_V0, bd_U16_V1);
+
+        __m512i a_U16_V = _mm512_unpacklo_epi64(a_U16_V0, c_U16_V0);
+        __m512i b_U16_V = _mm512_unpackhi_epi64(a_U16_V0, c_U16_V0);
+        __m512i c_U16_V = _mm512_unpacklo_epi64(b_U16_V0, d_U16_V0);
+
+        __m512i a_U16_VP = _mm512_permutexvar_epi32(PermCtlV, a_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+        __m512i b_U16_VP = _mm512_permutexvar_epi32(PermCtlV, b_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+        __m512i c_U16_VP = _mm512_permutexvar_epi32(PermCtlV, c_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+
+        //save
+        _mm512_storeu_si512((__m512i*)&DstA[x], a_U16_VP);
+        _mm512_storeu_si512((__m512i*)&DstB[x], b_U16_VP);
+        _mm512_storeu_si512((__m512i*)&DstC[x], c_U16_VP);
+      } //x
+      SrcABCD += SrcStride;
+      DstA    += DstStride;
+      DstB    += DstStride;
+      DstC    += DstStride;
+    } //y
+  }
+  else
+  {
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const uint32 MaskS       = ((uint32)1 << Remainder32) - 1;
+
+    const uint64 Remainder128 = (uint32)(Width<<2) & c_RemainderMask128;
+    const uint64 MaskL1t      = Remainder128 > 64 ? (uint64)0xFFFFFFFFFFFFFFFF : ((uint64)1 << (Remainder128)) - 1;
+    const uint64 MaskL2t      = Remainder128 < 64 ? 0 : ((uint64)1 << (Remainder128 - 64)) - 1;
+    const uint32 MaskL1       = (uint32)(MaskL1t & 0xFFFFFFFF);
+    const uint32 MaskL2       = (uint32)(MaskL1t >>32);
+    const uint32 MaskL3       = (uint32)(MaskL2t & 0xFFFFFFFF);
+    const uint32 MaskL4       = (uint32)(MaskL2t >> 32);
+
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width32; x += 32)
+      {
+        //load
+        __m512i abcd_U16_V0 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 0 ]);
+        __m512i abcd_U16_V1 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 32]);
+        __m512i abcd_U16_V2 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 64]);
+        __m512i abcd_U16_V3 = _mm512_loadu_si512((__m512i*) & SrcABCD[(x << 2) + 96]);
+
+        //transpose
+        __m512i ac_U16_V0 = _mm512_unpacklo_epi16(abcd_U16_V0, abcd_U16_V1);
+        __m512i ac_U16_V1 = _mm512_unpackhi_epi16(abcd_U16_V0, abcd_U16_V1);
+        __m512i bd_U16_V0 = _mm512_unpacklo_epi16(abcd_U16_V2, abcd_U16_V3);
+        __m512i bd_U16_V1 = _mm512_unpackhi_epi16(abcd_U16_V2, abcd_U16_V3);
+
+        __m512i a_U16_V0 = _mm512_unpacklo_epi16(ac_U16_V0, ac_U16_V1);
+        __m512i b_U16_V0 = _mm512_unpackhi_epi16(ac_U16_V0, ac_U16_V1);
+        __m512i c_U16_V0 = _mm512_unpacklo_epi16(bd_U16_V0, bd_U16_V1);
+        __m512i d_U16_V0 = _mm512_unpackhi_epi16(bd_U16_V0, bd_U16_V1);
+
+        __m512i a_U16_V = _mm512_unpacklo_epi64(a_U16_V0, c_U16_V0);
+        __m512i b_U16_V = _mm512_unpackhi_epi64(a_U16_V0, c_U16_V0);
+        __m512i c_U16_V = _mm512_unpacklo_epi64(b_U16_V0, d_U16_V0);
+
+        __m512i a_U16_VP = _mm512_permutexvar_epi32(PermCtlV, a_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+        __m512i b_U16_VP = _mm512_permutexvar_epi32(PermCtlV, b_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+        __m512i c_U16_VP = _mm512_permutexvar_epi32(PermCtlV, c_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+
+        //save
+        _mm512_storeu_si512((__m512i*)&DstA[x], a_U16_VP);
+        _mm512_storeu_si512((__m512i*)&DstB[x], b_U16_VP);
+        _mm512_storeu_si512((__m512i*)&DstC[x], c_U16_VP);
+      } //x
+
+      //load
+      __m512i abcd_U16_V0 =          _mm512_maskz_loadu_epi16(MaskL1, (__m512i*) & SrcABCD[(Width32 << 2) + 0 ])                         ;
+      __m512i abcd_U16_V1 = MaskL2 ? _mm512_maskz_loadu_epi16(MaskL2, (__m512i*) & SrcABCD[(Width32 << 2) + 32]) : _mm512_setzero_si512();
+      __m512i abcd_U16_V2 = MaskL3 ? _mm512_maskz_loadu_epi16(MaskL3, (__m512i*) & SrcABCD[(Width32 << 2) + 64]) : _mm512_setzero_si512();
+      __m512i abcd_U16_V3 = MaskL4 ? _mm512_maskz_loadu_epi16(MaskL4, (__m512i*) & SrcABCD[(Width32 << 2) + 96]) : _mm512_setzero_si512();
+
+      //transpose
+      __m512i ac_U16_V0 = _mm512_unpacklo_epi16(abcd_U16_V0, abcd_U16_V1);
+      __m512i ac_U16_V1 = _mm512_unpackhi_epi16(abcd_U16_V0, abcd_U16_V1);
+      __m512i bd_U16_V0 = _mm512_unpacklo_epi16(abcd_U16_V2, abcd_U16_V3);
+      __m512i bd_U16_V1 = _mm512_unpackhi_epi16(abcd_U16_V2, abcd_U16_V3);
+
+      __m512i a_U16_V0 = _mm512_unpacklo_epi16(ac_U16_V0, ac_U16_V1);
+      __m512i b_U16_V0 = _mm512_unpackhi_epi16(ac_U16_V0, ac_U16_V1);
+      __m512i c_U16_V0 = _mm512_unpacklo_epi16(bd_U16_V0, bd_U16_V1);
+      __m512i d_U16_V0 = _mm512_unpackhi_epi16(bd_U16_V0, bd_U16_V1);
+
+      __m512i a_U16_V = _mm512_unpacklo_epi64(a_U16_V0, c_U16_V0);
+      __m512i b_U16_V = _mm512_unpackhi_epi64(a_U16_V0, c_U16_V0);
+      __m512i c_U16_V = _mm512_unpacklo_epi64(b_U16_V0, d_U16_V0);
+
+      __m512i a_U16_VP = _mm512_permutexvar_epi32(PermCtlV, a_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+      __m512i b_U16_VP = _mm512_permutexvar_epi32(PermCtlV, b_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+      __m512i c_U16_VP = _mm512_permutexvar_epi32(PermCtlV, c_U16_V); //fix AVX512 per lane mess (this time before "unpack")
+
+      //save
+      _mm512_mask_storeu_epi16((__m512i*)&DstA[Width32], MaskS, a_U16_VP);
+      _mm512_mask_storeu_epi16((__m512i*)&DstB[Width32], MaskS, b_U16_VP);
+      _mm512_mask_storeu_epi16((__m512i*)&DstC[Width32], MaskS, c_U16_VP);
+
+      SrcABCD += SrcStride;
+      DstA    += DstStride;
+      DstB    += DstStride;
+      DstC    += DstStride;
+    } //y
+  }
+}
 int32 xPixelOpsAVX512::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width, int32 Height)
 {
   int32 NumNonZero = 0;
@@ -467,6 +677,48 @@ int32 xPixelOpsAVX512::CountNonZero(const uint16* Src, int32 SrcStride, int32 Wi
   }
 
   return NumNonZero;
+}
+bool xPixelOpsAVX512::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  {
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width; x += 32)
+      {
+        __m512i Tst_U16_V = _mm512_loadu_si512((__m512i*)&Tst[x]);
+        __m512i Ref_U16_V = _mm512_loadu_si512((__m512i*)&Ref[x]);
+        uint32  EqMask    = _mm512_cmpeq_epi16_mask(Tst_U16_V, Ref_U16_V);
+        if(EqMask != 0xFFFFFFFF) { return false; }
+      } //x
+      Tst += TstStride;
+      Ref += RefStride;
+    } //y
+  }
+  else
+  {
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const uint32 MaskL       = ((uint32)1 << Remainder32) - 1;
+
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width32; x += 32)
+      {
+        __m512i Tst_U16_V = _mm512_loadu_si512((__m512i*)&Tst[x]);
+        __m512i Ref_U16_V = _mm512_loadu_si512((__m512i*)&Ref[x]);
+        uint32  EqMask    = _mm512_cmpeq_epi16_mask(Tst_U16_V, Ref_U16_V);
+        if(EqMask != 0xFFFFFFFF) { return false; }
+      } //x      
+      __m512i Tst_U16_V = _mm512_maskz_loadu_epi16(MaskL, (__m512i*)&Tst[Width32]);
+      __m512i Ref_U16_V = _mm512_maskz_loadu_epi16(MaskL, (__m512i*)&Ref[Width32]);
+      uint32  EqMask    = _mm512_cmpeq_epi16_mask(Tst_U16_V, Ref_U16_V);
+      if(EqMask != 0xFFFFFFFF) { return false; }
+      Tst += TstStride;
+      Ref += RefStride;
+    } //y
+  }
+  return true;
 }
 
 //===============================================================================================================================================================================================================

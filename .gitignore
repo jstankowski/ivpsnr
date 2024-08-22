@@ -1,2 +1,7 @@
 /.vs
+/debug*
 /build*
+/dev_project
+/out
+
+**/CMakeSettings.json

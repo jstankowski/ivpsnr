@@ -41,36 +41,56 @@
 // System section
 //=============================================================================================================================================================================
 #if (defined(WIN32) || defined(_WIN32) || defined(_WIN64))
-  #define X_SYSTEM_WINDOWS 1
+  #define X_PMBB_OPERATING_SYSTEM_WINDOWS 1
+  #define X_PMBB_OPERATING_SYSTEM_NAME "Windows"
 #elif defined(__linux__)
-  #define X_SYSTEM_LINUX 1
+  #define X_PMBB_OPERATING_SYSTEM_LINUX 1
+  #define X_PMBB_OPERATING_SYSTEM_NAME "Linux"
 #else
-  #error "Unknown system"
+  #error "Unknown target operating system"
+  #define X_PMBB_OPERATING_SYSTEM_NAME "  "
 #endif
 
 //=============================================================================================================================================================================
 // Compiler section
 //=============================================================================================================================================================================
 #if defined __INTEL_COMPILER
-  #define X_COMPILER_ICC 1
-  #define X_COMPILER_VER  __INTEL_COMPILER
-  #define X_COMPILER_NAME "Intel Compiler"
+  #define X_PMBB_COMPILER_ICC 1
+  #define X_PMBB_COMPILER_VER  __INTEL_COMPILER
+  #define X_PMBB_COMPILER_NAME "Intel Compiler"
 #elif defined __clang__
-  #define X_COMPILER_CLANG 1
-  #define X_COMPILER_VER  __clang_major__
-  #define X_COMPILER_NAME "Clang"
+  #define X_PMBB_COMPILER_CLANG 1
+  #define X_PMBB_COMPILER_VER  __clang_major__
+  #define X_PMBB_COMPILER_NAME "Clang"
 #elif defined __GNUC__
-  #define X_COMPILER_GCC 1
-  #define X_COMPILER_VER  __GNUC__
-  #define X_COMPILER_NAME "GNU Compiler Collection"
+  #define X_PMBB_COMPILER_GCC 1
+  #define X_PMBB_COMPILER_VER  __GNUC__
+  #define X_PMBB_COMPILER_NAME "GNU Compiler Collection"
 #elif defined _MSC_VER
-  #define X_COMPILER_MSVC 1
-  #define X_COMPILER_VER  _MSC_VER
-  #define X_COMPILER_NAME "MS Visual Studio"
+  #define X_PMBB_COMPILER_MSVC 1
+  #define X_PMBB_COMPILER_VER  _MSC_VER
+  #define X_PMBB_COMPILER_NAME "MS Visual Studio"
 #else
-  #define X_COMPILER_VER  
-  #define X_COMPILER_NAME "unknown"
+  #define X_PMBB_COMPILER_VER  
+  #define X_PMBB_COMPILER_NAME "unknown"
 #endif
+
+//=============================================================================================================================================================================
+// architecture section
+//=============================================================================================================================================================================
+#if defined(X_PMBB_COMPILER_MSVC)
+  #if defined(_M_X64)
+    #define X_ARCHITECTURE_AMD64 1
+  #endif
+#elif defined(X_PMBB_COMPILER_GCC) || defined(X_PMBB_COMPILER_CLANG)
+  #if defined (__x86_64__)
+    #define X_ARCHITECTURE_AMD64 1
+  #endif
+#endif
+
+#ifndef X_ARCHITECTURE_AMD64
+#define X_ARCHITECTURE_AMD64 0
+#endif // !X_ARCHITECTURE_AMD64
 
 //=============================================================================================================================================================================
 // C99 restrict pointers support

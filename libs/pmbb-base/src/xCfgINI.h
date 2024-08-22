@@ -10,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <functional>
 
 namespace PMBB_BASE {
 
@@ -49,6 +50,7 @@ public:
       None,
       Rglr, //regular
       Flag,
+      List,
       Fake,
     };
 
@@ -58,6 +60,7 @@ public:
     std::string m_SectionName;
     std::string m_ParamName;
     std::string m_FlagValue;
+    char        m_Separator;
     std::string m_Comment;
 
   public:
@@ -65,9 +68,9 @@ public:
     [[deprecated]] xCmdParam(tCSR CmdPattern, tCSR SectionName, tCSR ParamName                ) { m_Type = eType::Rglr; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = ""       ; m_Comment = ""; }
     [[deprecated]] xCmdParam(tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue) { m_Type = eType::Flag; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Comment = ""; }
 
-    xCmdParam(eType Type, tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue = "")
+    xCmdParam(eType Type, tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue, char Separator)
     {
-      m_Type = Type;  m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Comment = "";
+      m_Type = Type;  m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Separator = Separator, m_Comment = "";
     }
 
   public:
@@ -81,6 +84,9 @@ public:
     inline bool  getIsFlag      (                ) const { return m_Type == eType::Flag; }
     inline void  setFlagValue   (tCSR FlagValue  )       { m_FlagValue = FlagValue;    }
     inline tCSR  getFlagValue   (                ) const { return m_FlagValue;         }
+    inline void  setSeparator   (char Separator  )       { m_Separator = Separator;    }
+    inline char  getSeparator   (                ) const { return m_Separator;         }
+
   };
 
   class xParam
@@ -101,36 +107,24 @@ public:
 
     void     clearArgs ()       { m_Args.clear(); }
     uintSize getNumArgs() const { return m_Args.size(); }
-    void     addArg    (tCSR Arg) { m_Args.push_back(Arg); }
+    void     setArg    (const stringVx& Args) { m_Args = Args; }
+    void     addArg    (tCSR             Arg) { m_Args.push_back(Arg); }
     void     addArg    (std::string&&    Arg) { m_Args.push_back(std::move(Arg)); }
     void     addArg    (std::string_view Arg) { m_Args.emplace_back(Arg); }
 
     tCSR  getArg(uint32 ArgIdx, tCSR  Default) const { return m_Args.size()>ArgIdx ? m_Args[ArgIdx] : Default; }
-    flt64 getArg(uint32 ArgIdx, flt64 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
-    flt32 getArg(uint32 ArgIdx, flt32 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
-    int64 getArg(uint32 ArgIdx, int64 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
-    int32 getArg(uint32 ArgIdx, int32 Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
-    bool  getArg(uint32 ArgIdx, bool  Default) const { return m_Args.size()>ArgIdx ? xStrToXXX(m_Args[ArgIdx], Default) : Default; }
+    flt64 getArg(uint32 ArgIdx, flt64 Default) const { return m_Args.size()>ArgIdx ? xString::StrToXXX(m_Args[ArgIdx], Default) : Default; }
+    flt32 getArg(uint32 ArgIdx, flt32 Default) const { return m_Args.size()>ArgIdx ? xString::StrToXXX(m_Args[ArgIdx], Default) : Default; }
+    int64 getArg(uint32 ArgIdx, int64 Default) const { return m_Args.size()>ArgIdx ? xString::StrToXXX(m_Args[ArgIdx], Default) : Default; }
+    int32 getArg(uint32 ArgIdx, int32 Default) const { return m_Args.size()>ArgIdx ? xString::StrToXXX(m_Args[ArgIdx], Default) : Default; }
+    bool  getArg(uint32 ArgIdx, bool  Default) const { return m_Args.size()>ArgIdx ? xString::StrToXXX(m_Args[ArgIdx], Default) : Default; }
 
     const stringVx&    getArgs(             ) const { return m_Args; }
-    std::vector<flt32> getArgs(flt32 Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
-    std::vector<flt64> getArgs(flt64 Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
-    std::vector<int64> getArgs(int64 Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
-    std::vector<int32> getArgs(int32 Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
-    std::vector<bool > getArgs(bool  Default) const { return xVecOfStringToVecOfXXX(m_Args, Default); }
-
-  protected:
-    template <class XXX> static XXX xStrToXXX(tCSR Str, XXX Default)
-    {
-      if(Str.length() > 0) { std::istringstream InStringStream(Str, std::istringstream::in); InStringStream >> Default; }
-      return Default;
-    }
-    template <class XXX> static std::vector<XXX>xVecOfStringToVecOfXXX(const std::vector<std::string>& VecStr, XXX Default)
-    { 
-      std::vector<XXX> VecXXX;
-      std::transform(VecStr.cbegin(), VecStr.cend(), std::back_inserter(VecXXX), [&](tCSR Str) -> XXX { return xStrToXXX<XXX>(Str, Default); });
-      return VecXXX;
-    }
+    std::vector<flt32> getArgs(flt32 Default) const { return xString::VecOfStringToVecOfXXX(m_Args, Default); }
+    std::vector<flt64> getArgs(flt64 Default) const { return xString::VecOfStringToVecOfXXX(m_Args, Default); }
+    std::vector<int64> getArgs(int64 Default) const { return xString::VecOfStringToVecOfXXX(m_Args, Default); }
+    std::vector<int32> getArgs(int32 Default) const { return xString::VecOfStringToVecOfXXX(m_Args, Default); }
+    std::vector<bool > getArgs(bool  Default) const { return xString::VecOfStringToVecOfXXX(m_Args, Default); }
   };
 
   class xSection
@@ -172,6 +166,16 @@ public:
     int64 getParam1stArg(tCSR ParamName, int64 Default) const { return findParam(ParamName) ? getParam(ParamName).getArg(0, Default) : Default; }
     int32 getParam1stArg(tCSR ParamName, int32 Default) const { return findParam(ParamName) ? getParam(ParamName).getArg(0, Default) : Default; }
     bool  getParam1stArg(tCSR ParamName, bool  Default) const { return findParam(ParamName) ? getParam(ParamName).getArg(0, Default) : Default; }
+    template<typename XXX> XXX cvtParam1stArg(tCSR ParamName, XXX Default, XXX(*Interpreter)(tCSR)) const
+    {
+      if(!findParam(ParamName) || getParam(ParamName).getNumArgs() < 1) { return Default; }
+      return Interpreter(getParam(ParamName).getArgs()[0]);
+    }
+    //template<typename XXX> XXX cvtParam1stArg(tCSV ParamName, XXX Default, XXX(*Interpreter)(tCSR)) const
+    //{
+    //  if(!findParam(ParamName) || getParam(ParamName).getNumArgs() < 1) { return Default; }
+    //  return Interpreter(getParam(ParamName).getArgs()[0]);
+    //}
 
     stringVx getParamArgs(tCSR ParamName               ) const { return findParam(ParamName) ? getParam(ParamName).getArgs(       ) : stringVx(); }
     flt32Vx  getParamArgs(tCSR ParamName, flt32 Default) const { return findParam(ParamName) ? getParam(ParamName).getArgs(Default) : flt32Vx (); }
@@ -256,6 +260,7 @@ public:
 
   protected:
     bool               m_AllowUnknownCmdParams = false;
+    bool               m_AllowEmptyCmdParams   = false;
     xRootSection       m_RootSection;
     bool               m_ConfigFileFoundInCmd;
     std::stringstream  m_ConfigStream;
@@ -270,11 +275,13 @@ public:
 
   public:
     xParser();
-    void        setUnknownCmdParams (bool AllowUnknownCmdParams) { m_AllowUnknownCmdParams = AllowUnknownCmdParams; }
+    void        setUnknownCmdParams(bool AllowUnknownCmdParams) { m_AllowUnknownCmdParams = AllowUnknownCmdParams; }
+    void        setEmptyCmdParams  (bool AllowEmptyCmdParams  ) { m_AllowEmptyCmdParams   = AllowEmptyCmdParams  ; }
     void        addCmdParm(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName                );
     void        addCmdFlag(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, tCSR FlagValue);
+    void        addCmdList(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, char Separator);
     void        addCmdFake(tCSR CmdShrt, tCSR CmdLong                                                  );
-    bool        loadFromCmdln (int argc, char* argv[], tCSR CfgTokenShort = std::string(c_CmdPrefixShrt) + "c", tCSR = std::string(c_CmdPrefixLong) + "config");
+    bool        loadFromCmdln (int argc, const char* argv[], tCSR CfgTokenShort = std::string(c_CmdPrefixShrt) + "c", tCSR = std::string(c_CmdPrefixLong) + "config");
     bool        loadFromFile  (tCSR FileName);
     bool        loadFromString(tCSR Buffer  );
     std::string printConfig         (             );
@@ -312,19 +319,22 @@ public:
     int64 getParam1stArg(tCSR ParamName, int64 Default) const { return m_RootSection.getParam1stArg(ParamName, Default); } //operates on root section
     int32 getParam1stArg(tCSR ParamName, int32 Default) const { return m_RootSection.getParam1stArg(ParamName, Default); } //operates on root section
   //bool  getParam1stArg(tCSR ParamName, bool  Default) const { return m_RootSection.getParam1stArg(ParamName, Default); } //operates on root section
+    //template<typename XXX> XXX cvtParam1stArg(const char ParamName[], XXX Default, std::function<XXX(tCSR)> Interpreter) const { return m_RootSection.cvtParam1stArg(ParamName, Default, Interpreter); } //operates on root section
+    template<typename XXX> XXX cvtParam1stArg(tCSR ParamName, XXX Default, XXX(*Interpreter)(tCSR)) const { return m_RootSection.cvtParam1stArg(ParamName, Default, Interpreter); } //operates on root section
+    //template<typename XXX> XXX cvtParam1stArg(tCSV ParamName, XXX Default, std::function<XXX(tCSV)> Interpreter) const { return m_RootSection.cvtParam1stArg(ParamName, Default, Interpreter); } //operates on root section
   
     tCSR  getParam1stArg(tCSR SectionName, tCSR ParamName, tCSR  Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
     flt64 getParam1stArg(tCSR SectionName, tCSR ParamName, flt64 Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
     flt32 getParam1stArg(tCSR SectionName, tCSR ParamName, flt32 Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
     int64 getParam1stArg(tCSR SectionName, tCSR ParamName, int64 Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
     int32 getParam1stArg(tCSR SectionName, tCSR ParamName, int32 Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
-    bool  getParam1stArg(tCSR SectionName, tCSR ParamName, bool  Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
+  //bool  getParam1stArg(tCSR SectionName, tCSR ParamName, bool  Default) const { return findSection(SectionName) ? getSection(SectionName).getParam1stArg(ParamName, Default) : Default; } //operates on root section
 
     stringVx getParamArgs(tCSR ParamName) const { return m_RootSection.getParamArgs(ParamName); } //operates on root section
   };
 
 public:
-  static void printCommandlineArgs(int argc, char* argv[]);
+  static void printCommandlineArgs(int argc, const char* argv[]);
   static void printParsingError(tCSR ErrorMessage, tCSR HelpString);
   static void printError(tCSR ErrorMessage, tCSR  HelpString = std::string());
   static void printError(tCSR ErrorMessage, tCSV& HelpString);

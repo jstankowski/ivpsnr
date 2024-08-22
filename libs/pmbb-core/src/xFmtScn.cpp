@@ -40,6 +40,58 @@ int32V2 xFmtScn::scanResolution(const std::string& ResolutionString)
 
   return { Width, Height };
 }
+xFmtScn::tTpCfBd xFmtScn::scanPixelFormat(const std::string& PixelFormatString)
+{
+  eImgTp ImageType    = eImgTp::INVALID;
+  eCrF   ChromaFormat = eCrF::INVALID;
+  int32  BitDepth     = NOT_VALID;
+
+  if(PixelFormatString.empty() || PixelFormatString.length() < 7) { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+
+  std::string_view PixelFormatView = PixelFormatString;
+  PixelFormatView = xString::stripR(xString::stripL(PixelFormatView));
+
+  if(PixelFormatView.empty() || PixelFormatView.length() < 7) { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+
+  std::string_view RemainingView;
+
+  if(PixelFormatView.substr(0, 3) == "yuv")
+  {    
+    std::string_view ChromaFormatView = PixelFormatView.substr(3,3);
+    int32 ChromaFormatInt = NOT_VALID;
+    std::from_chars(ChromaFormatView.data(), ChromaFormatView.data() + ChromaFormatView.length(), ChromaFormatInt);
+    if(ChromaFormatInt != 444 && ChromaFormatInt != 422 && ChromaFormatInt != 420) { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+    if(PixelFormatView[6] != 'p') { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+    ImageType     = eImgTp::YCbCr;
+    ChromaFormat  = (eCrF)ChromaFormatInt;
+    RemainingView = PixelFormatView.substr(7);
+  }
+  else if(PixelFormatView.substr(0, 4) == "gray")
+  {
+    if(PixelFormatView[4] == 'f') { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; };
+    ImageType     = eImgTp::YCbCr;
+    ChromaFormat  = eCrF::CF400;
+    RemainingView = PixelFormatView.substr(4);
+  }
+  else
+  {
+    return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID };
+  }
+
+  if(RemainingView.length() == 0) { BitDepth = 8; }
+  else
+  {
+    const uintSize PosBE = RemainingView.find("be", 0);
+    if(PosBE != std::string_view::npos) { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+    const uintSize PosLE = RemainingView.find("le", 0);
+    if(PosLE == std::string_view::npos || (PosLE != 1 && PosLE != 2)) { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+    std::string_view BitDepthView = RemainingView.substr(0, PosLE);
+    std::from_chars(BitDepthView.data(), BitDepthView.data() + BitDepthView.length(), BitDepth);
+    if(BitDepth < 8 || BitDepth>16) { return { eImgTp::INVALID, eCrF::INVALID, NOT_VALID }; }
+  }
+  
+  return { ImageType, ChromaFormat, BitDepth };
+}
 int32V4 xFmtScn::scanIntWeights(const std::string& CmpWeightsString) //parse vector of 4 nonnegative integers (format {d}:{d}:{d}:{d}), returns {-1, -1, -1, -1} on failure
 {
   if (CmpWeightsString.empty() || CmpWeightsString.length() < 7) { return xMakeVec4(NOT_VALID); }
@@ -118,7 +170,7 @@ flt32V4 xFmtScn::scanFltWeights(const std::string& CmpWeightsString) //parse vec
 
 //===============================================================================================================================================================================================================
 
-xFileNameScn::tValRes xFileNameScn::validateFileParams(const std::string& FilePath, int32V2 PictureSize, int32 BitDepth, int32 ChromaFormat)
+xFileNameScn::tValRes xFileNameScn::validateFileParams(const std::string& FilePath, int32V2 PictureSize, int32 BitDepth, eCrF ChromaFormat)
 {
   const auto [DetPS, ResPS] = determineResolutionFromFilePath  (FilePath);
   const auto [DetBD, ResBD] = determineBitDepthFromFilePath    (FilePath);
@@ -139,9 +191,9 @@ xFileNameScn::tValRes xFileNameScn::validateFileParams(const std::string& FilePa
     Correct = false;
   }
 
-  if(ResCF == eResult::Confident && DetCF != ChromaFormat)
+  if(ResCF == eResult::Confident && DetCF != (int32)ChromaFormat)
   {
-    Message += fmt::format("Detected ChromaFormat={} does not mach declared ChromaFormat={} in file FilePath={}\n", DetCF, ChromaFormat, FilePath);
+    Message += fmt::format("Detected ChromaFormat={} does not mach declared ChromaFormat={} in file FilePath={}\n", DetCF, (int32)ChromaFormat, FilePath);
     Correct = false;
   }
 
@@ -199,7 +251,7 @@ xFileNameScn::tResI32V2 xFileNameScn::determineResolutionFromString(const std::s
   int32 Len = (int32)FileName.length();
 
   for(int32 Pos=Len-1; Pos>0; Pos--)
-  {		
+  {
     if(FileName[Pos] == 'x' || FileName[Pos] == 'X')
     {
       int32 Beg = Pos;
@@ -220,7 +272,7 @@ xFileNameScn::tResI32V2 xFileNameScn::determineResolutionFromString(const std::s
         Result = std::make_tuple(Resolution, eResult::Confident);
         return Result;
       }
-    }		
+    }
   }
   return Result;
 }

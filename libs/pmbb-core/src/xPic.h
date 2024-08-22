@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include "xPicCommon.h"
 #include "xVec.h"
 #include <mutex>
@@ -22,23 +22,28 @@ protected:
   uint16* m_Origin[c_MaxNumCmps] = { nullptr, nullptr, nullptr, nullptr }; //pel origin, pel access -> m_PelOrg[y*m_PelStride + x]
 
 public:
-  //general functions
+  //constructors $ destructors
   xPicP () { };
   xPicP (int32V2 Size, int32 BitDepth, int32 Margin = c_DefMargin) { create(Size, BitDepth, Margin); }
   ~xPicP() { destroy(); }
 
+  //genral functions
   void   create (int32V2 Size, int32 BitDepth, int32 Margin = c_DefMargin);
   void   create (const xPicP *Ref) { create(Ref->getSize(), Ref->getBitDepth(), Ref->getMargin()); }
   void   destroy();
 
-  void   clear  ();
+  void   clear  (                            );
   void   copy   (const xPicP* Src            );
   void   copy   (const xPicP* Src, eCmp CmpId) { assert(isCompatible(Src)); xMemcpyX(m_Buffer[(int32)CmpId], Src->m_Buffer[(int32)CmpId], m_BuffCmpNumPels); }
   void   fill   (uint16 Value                );
   void   fill   (uint16 Value    , eCmp CmpId);
-  bool   check  (const std::string& Name);
-  void   conceal();
-  void   extend ();
+  bool   check  (const std::string& Name     )  const;
+  void   conceal(                            );
+  void   extend (                            );
+
+  bool   equalPic (const xPicP* Src)  const;
+  bool   equalCmp (const xPicP* Src, eCmp CmpId)  const;
+  boolV4 equalCmps(const xPicP* Src)  const;
 
   //access picture data
   inline int32         getStride(                            ) const { return m_Stride              ; }
@@ -65,6 +70,7 @@ public:
          bool          swapBuffer    (uint16*& Buffer, eCmp CmpId);
          bool          swapBuffer    (xPicP* TheOther, eCmp CmpId);
          bool          swapBuffers   (xPicP* TheOther);
+         bool          swapComponents(eCmp CmpIdA, eCmp CmpIdB);
 };
 
 //===============================================================================================================================================================================================================

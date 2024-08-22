@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include <array>
 #include <vector>
 
@@ -129,9 +129,11 @@ public:
 
   inline void  modClip (const tVec& Min, const tVec& Max) { m_V[0] = xClip (m_V[0], Min.m_V[0], Max.m_V[0]); m_V[1] = xClip (m_V[1], Min.m_V[1], Max.m_V[1]); }
   inline void  modClipU(                 const tVec& Max) { m_V[0] = xClipU(m_V[0],             Max.m_V[0]); m_V[1] = xClipU(m_V[1],             Max.m_V[1]); }
+  inline void  modClipU(                         XXX Max) { m_V[0] = xClipU(m_V[0],             Max       ); m_V[1] = xClipU(m_V[1],             Max       ); }
 
   inline tVec  getClip (const tVec& Min, const tVec& Max) const { return { xClip (m_V[0], Min.m_V[0], Max.m_V[0]), xClip (m_V[1], Min.m_V[1], Max.m_V[1]) }; }
   inline tVec  getClipU(                 const tVec& Max) const { return { xClipU(m_V[0],             Max.m_V[0]), xClipU(m_V[1],             Max.m_V[1]) }; }
+  inline tVec  getClipU(                         XXX Max) const { return { xClipU(m_V[0],             Max       ), xClipU(m_V[1],             Max       ) }; }
 };
 
 //===============================================================================================================================================================================================================
@@ -292,6 +294,12 @@ public:
 
   inline tVec  getVecAbs () const { return tVec(xAbs(m_V[0]), xAbs(m_V[1]), xAbs(m_V[2]), xAbs(m_V[3])); }
   inline tVec  getVecPow2() const { return tVec(xPow2(m_V[0]), xPow2(m_V[1]), xPow2(m_V[2]), xPow2(m_V[3])); }
+  
+  //terrible slow (since std::pow is slow) but sometimes usefull, defined only for floating point types
+  //template <typename = typename std::enable_if_t<std::is_floating_point_v<XXX>>>
+  inline tVec  getVecPow1(XXX  P) const { return tVec(std::pow(m_V[0], P), std::pow(m_V[1], P), std::pow(m_V[2], P), std::pow(m_V[3], P)); }
+  //template <typename = typename std::enable_if_t<std::is_floating_point_v<XXX>>>
+  inline tVec  getVecPowV(tVec P) const { return tVec(std::pow(m_V[0], P[0]), std::pow(m_V[1], P[1]), std::pow(m_V[2], P[2]), std::pow(m_V[3], P[3])); }
 
   inline XXX   getMax    () const {return xMax(xMax(m_V[0], m_V[1]), xMax(m_V[2], m_V[3]));}
   inline XXX   getMin    () const {return xMin(xMin(m_V[0], m_V[1]), xMin(m_V[2], m_V[3]));}

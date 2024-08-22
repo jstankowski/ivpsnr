@@ -21,22 +21,27 @@ xCfgINI::xParser::xParser()
 }
 void xCfgINI::xParser::addCmdParm(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName)); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName)); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, "", 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, "", 0)); }
 }
 void xCfgINI::xParser::addCmdFlag(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, tCSR FlagValue)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, FlagValue)); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, FlagValue)); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, FlagValue, 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, FlagValue, 0)); }
+}
+void xCfgINI::xParser::addCmdList(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, char Separator)
+{
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::List, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, "", Separator)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::List, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, "", Separator)); }
 }
 void xCfgINI::xParser::addCmdFake(tCSR CmdShrt, tCSR CmdLong)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Fake, std::string(c_CmdPrefixShrt) + CmdShrt, "", "")); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Fake, std::string(c_CmdPrefixLong) + CmdLong, "", "")); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Fake, std::string(c_CmdPrefixShrt) + CmdShrt, "", "", "", 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Fake, std::string(c_CmdPrefixLong) + CmdLong, "", "", "", 0)); }
 }
-bool xCfgINI::xParser::loadFromCmdln(int argc, char* argv[], tCSR CfgTokenShort, tCSR CfgTokenLong)
+bool xCfgINI::xParser::loadFromCmdln(int argc, const char* argv[], tCSR CfgTokenShort, tCSR CfgTokenLong)
 {
-  if(argc == 1) { m_ParserLog += fmt::sprintf("ERROR ----> no commandline arguments!\n"); return false; }
+  if(argc == 1 && !m_AllowEmptyCmdParams) { m_ParserLog += fmt::sprintf("ERROR ----> no commandline arguments!\n"); return false; }
 
   for(int i = 1; i < argc; i++)
   {
@@ -60,6 +65,7 @@ bool xCfgINI::xParser::loadFromCmdln(int argc, char* argv[], tCSR CfgTokenShort,
 
         if(CmdParam.getType() == xCmdParam::eType::Fake) //fake param - nothing to do here
         {
+          ++i; //skip also param arg
           continue;
         }
         else if(CmdParam.getType() == xCmdParam::eType::Flag) //flag only
@@ -75,6 +81,20 @@ bool xCfgINI::xParser::loadFromCmdln(int argc, char* argv[], tCSR CfgTokenShort,
           }
           else
           { 
+            m_ParserLog += fmt::sprintf("ERROR ----> missing value for \"%s\"\n", CmdParam.getParamName());
+            return false;
+          }
+        }
+        else if(CmdParam.getType() == xCmdParam::eType::List)
+        {
+          if(++i < argc)
+          {
+            std::string Arg = argv[i];
+            stringVx ArgList = xString::split(Arg, CmdParam.getSeparator());
+            Param.setArg(ArgList);
+          }
+          else
+          {
             m_ParserLog += fmt::sprintf("ERROR ----> missing value for \"%s\"\n", CmdParam.getParamName());
             return false;
           }
@@ -420,12 +440,12 @@ std::string xCfgINI::xParser::xStoreParam(const xParam& Param)
 //===============================================================================================================================================================================================================
 // xCfgINI
 //===============================================================================================================================================================================================================
-void xCfgINI::printCommandlineArgs(int argc, char* argv[])
+void xCfgINI::printCommandlineArgs(int argc, const char* argv[])
 {
   std::string CommandlineArgs = fmt::sprintf("argc     = %d\n", argc);
   for(int32 i=0; i<argc; i++) { CommandlineArgs += fmt::sprintf("argv[%02d] = %s\n", i, argv[i]); }
   CommandlineArgs += fmt::sprintf("\n");
-  fmt::printf(CommandlineArgs);
+  fmt::print("{}", CommandlineArgs);
 }
 void xCfgINI::printError(tCSR ErrorMessage, tCSR HelpString)
 {

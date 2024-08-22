@@ -26,8 +26,8 @@ void xThreadPool::create(int32 NumThreads, int32 WaitingQueueSize)
     std::thread Thread = std::thread(std::move(PackagedTask), this);
     m_ThreadId.push_back(Thread.get_id());
     m_Thread  .push_back(std::move(Thread));      
-  } 
-
+  }
+  
   m_Event.set();
 }
 void xThreadPool::destroy()
@@ -38,7 +38,7 @@ void xThreadPool::destroy()
 
   for(int32 i=0; i<m_NumThreads; i++)
   {
-    xWorkerTask* Terminator = new xWorkerTaskTerminator;
+    xPoolTask* Terminator = new xPoolTaskTerminator;
     m_WaitingTasks.EnqueueWait(Terminator);
   }
 
@@ -59,13 +59,13 @@ void xThreadPool::destroy()
     }
   }
 
-  for(std::pair<const uintPtr, xQueue<xWorkerTask*>>& Pair : m_CompletedTasks)
+  for(std::pair<const uintPtr, xQueue<xPoolTask*>>& Pair : m_CompletedTasks)
   {
-    xQueue<xWorkerTask*>& CompletedTaskQueue = Pair.second;
+    xQueue<xPoolTask*>& CompletedTaskQueue = Pair.second;
     int32 NumCompleted = (int32)CompletedTaskQueue.getLoad();
     for(int32 i=0; i<NumCompleted; i++)
     {
-      xWorkerTask* Task;
+      xPoolTask* Task;
       CompletedTaskQueue.DequeueWait(Task);
       delete Task;
     }
@@ -82,11 +82,11 @@ bool xThreadPool::unregisterClient(uintPtr ClientId)
 {
   if(m_CompletedTasks.find(ClientId) == m_CompletedTasks.end()) { return false; }
 
-  xQueue<xWorkerTask*>& CompletedTaskQueue = m_CompletedTasks.at(ClientId);
+  xQueue<xPoolTask*>& CompletedTaskQueue = m_CompletedTasks.at(ClientId);
   int32 NumCompleted = (int32)CompletedTaskQueue.getLoad();
   for(int32 i=0; i<NumCompleted; i++)
   {
-    xWorkerTask* Task;
+    xPoolTask* Task;
     CompletedTaskQueue.DequeueWait(Task);
     delete Task;
   }
@@ -101,13 +101,10 @@ uint32 xThreadPool::xThreadFunc()
   int32 ThreadIdx = (int32)(std::find(m_ThreadId.begin(), m_ThreadId.end(), ThreadId) - m_ThreadId.begin());
   while(1)
   {    
-    xWorkerTask* Task;
+    xPoolTask* Task;
     m_WaitingTasks.DequeueWait(Task);
-    if(Task->getStatus() == eTaskStatus::Terminate) 
-    {
-      delete Task; break;
-    }
-    xWorkerTask::StarterFunction(Task, ThreadIdx);
+    if(Task->getType() == xPoolTask::eType::Terminator) { delete Task; break; }
+    xPoolTask::StarterFunction(Task, ThreadIdx);
     m_CompletedTasks.at(Task->getClientId()).EnqueueWait(Task);
   }
   return EXIT_SUCCESS;
@@ -115,45 +112,60 @@ uint32 xThreadPool::xThreadFunc()
 
 //===============================================================================================================================================================================================================
 
-void xThreadPool::xWorkerTask::StarterFunction(xWorkerTask* WorkerTask, int32 ThreadIdx)
+void xThreadPool::xPoolTask::StarterFunction(xPoolTask* WorkerTask, int32 ThreadIdx)
 {
-  assert(WorkerTask->m_Status == eTaskStatus::Waiting);
-  WorkerTask->m_Status = eTaskStatus::Processed;
+  assert(WorkerTask->m_Status == xPoolTask::eStatus::Waiting);
+  WorkerTask->m_Status = xPoolTask::eStatus::Processed;
   WorkerTask->WorkingFunction(ThreadIdx);
-  WorkerTask->m_Status = eTaskStatus::Completed;
+  WorkerTask->m_Status = xPoolTask::eStatus::Completed;
 }
 
 //===============================================================================================================================================================================================================
 
-void xThreadPoolInterface::init(xThreadPool* ThreadPool, int32 CompletedQueueSize)
+void xThreadPoolInterface::init(xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks)
 {
   m_ThreadPool = ThreadPool;
   m_ThreadPool->registerClient(getClientId(), CompletedQueueSize);
   m_NumChunks  = m_ThreadPool->getNumThreads();
+  //pre init tasks
+  for(int32 i = 0; i < NumPreAllocatedFunctionTasks; i++) { m_UnusedTasks.push(new tTaskF(m_Id, m_Priority, nullptr)); }
 }
 void xThreadPoolInterface::uininit()
 {
   if(m_ThreadPool == nullptr) { return; }
   m_ThreadPool->unregisterClient(getClientId());
   m_ThreadPool = nullptr;
+  //clean unused tasks
+  while(!m_UnusedTasks.empty()) { tTaskF* Task = m_UnusedTasks.top(); m_UnusedTasks.pop(); delete Task; }
 }
-void xThreadPoolInterface::addWaitingTask(xThreadPool::xWorkerTask* Task)
-{ 
+void xThreadPoolInterface::addWaitingTask(tTask* Task)
+{
   Task->setClientId(getClientId());
   Task->setPriority(m_Priority);
   m_ThreadPool->addWaitingTask(Task);
 }
 void xThreadPoolInterface::addWaitingTask(std::function<void(int32)> Function)
 { 
-  xThreadPool::xWorkerTaskFunction* Task = new xThreadPool::xWorkerTaskFunction(getClientId(), m_Priority, Function);
+  //inactive xThreadPoolInterface will execute function taks in calling thread context
+  //allows to simplity code and avoid duplicating threaded and non-theaded variants
+  if(!isActive()) { Function(NOT_VALID); return; }
+
+  tTaskF* Task = nullptr;
+  if(m_UnusedTasks.empty()) { Task = m_UnusedTasks.top(); m_UnusedTasks.pop(); Task->setPrioFunction(m_Priority, Function); }
+  else                      { Task = new tTaskF(m_Id, m_Priority, Function); }
   m_ThreadPool->addWaitingTask(Task);
 }
 void xThreadPoolInterface::waitUntilTasksFinished(int32 NumTasksToWaitFor)
 {
+  //inactive xThreadPoolInterface will execute function taks in calling thread context
+  //allows to simplity code and avoid duplicating threaded and non-theaded variants
+  if(!isActive()) { return; };
+
   for(int32 TaskId=0; TaskId < NumTasksToWaitFor; TaskId++)
   {
-    xWorkerTask* Task = receiveCompletedTask();
-    delete Task;
+    tTask* Task = receiveCompletedTask();
+    if(Task->getType() == tTask::eType::Function) { m_UnusedTasks.push((tTaskF*)Task); }
+    else { delete Task; }
   }
 }
 void xThreadPoolInterface::executeTask(std::function<void(int32)> Function)

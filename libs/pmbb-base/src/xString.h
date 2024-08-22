@@ -17,6 +17,9 @@ namespace PMBB_BASE {
 class xString
 {
 public:
+  using tCSR = const std::string&;
+
+public:
   static inline bool IsAlpha   (int32 c) { return ((c>='a' && c<='z') || (c>='A' && c<='Z')); }  
   static inline bool IsNumeric (int32 c) { return ( c>='0' && c<='9'); }
   static inline bool IsAlphaNum(int32 c) { return (IsAlpha(c) || IsNumeric(c)); }
@@ -40,6 +43,28 @@ public:
 
   static inline void trimL(std::string& s) { s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {  return !IsSpace(ch); })); }
   static inline void trimR(std::string& s) { s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !IsSpace(ch); }).base(), s.end()); }
+
+  static std::vector<std::string> split(const std::string& String, const char Delimiter);
+
+  template <class XXX> static XXX StrToXXX(tCSR Str, XXX Default)
+  {
+    if(Str.length() > 0) { std::istringstream InStringStream(Str, std::istringstream::in); InStringStream >> Default; }
+    return Default;
+  }
+  template <class XXX> static std::vector<XXX> VecOfStringToVecOfXXX(const std::vector<std::string>& VecStr, XXX Default)
+  {
+    std::vector<XXX> VecXXX;
+    std::transform(VecStr.cbegin(), VecStr.cend(), std::back_inserter(VecXXX), [&](tCSR Str) -> XXX { return StrToXXX<XXX>(Str, Default); });
+    return VecXXX;
+  }
+  template <class XXX> static std::vector<std::string> VecOfXxxToVecOfString(const std::vector<XXX>& VecXXX)
+  {
+    std::vector<std::string> VecStr;
+    std::transform(VecStr.cbegin(), VecStr.cend(), std::back_inserter(VecXXX), [&](XXX X) -> std::string { return std::to_string(X); });
+    return VecXXX;
+  }
+
+
 };
 
 //===============================================================================================================================================================================================================

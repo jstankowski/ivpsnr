@@ -16,7 +16,7 @@ namespace PMBB_BASE {
 
 class xProcInfo
 {
-protected:
+public:
 
   enum class eExt
   {
@@ -118,6 +118,10 @@ protected:
     AMX_BF16          ,
     AMX_TILE          ,
     AMX_INT8          ,
+    //Golden Cove
+    HYBRID            ,
+    //???
+
 
     //AMD
     //Chompers
@@ -172,6 +176,18 @@ protected:
     int32_t getMemoryPageSize() const { return m_MemoryPageSize; }
   };
 
+public:
+  enum class eMFL : int32
+  {
+    INVALID   = NOT_VALID,
+    UNDEFINED = 0,
+    AMD64v1   = 1,
+    AMD64v2   = 2,
+    AMD64v3   = 3,
+    AMD64v4   = 4,
+    LAST      = 4
+  };
+
 protected:
   bool  m_ExtsChecked = false;
   bool  m_MemChecked  = false;
@@ -181,11 +197,13 @@ protected:
   bool  m_OSAVX = false; //OS level AVX support OSXSAVE
 
 public:
-  void    detectSysInfo();
-  void    printSysInfo ();
-  int32_t determineMicroArchFeatureLevel();
+  void        detectSysInfo();
+  std::string formatSysInfo();
+  eMFL        determineMicroArchFeatureLevel();
 
 public:
+  const xExts& getExts() const { return m_Exts; }
+
   inline bool hasSSEx() const { return m_Exts.hasSSEx()           ; }
   inline bool hasAVX1() const { return m_Exts.hasAVX1() && m_OSAVX; }
   inline bool hasAVX2() const { return m_Exts.hasAVX2() && m_OSAVX; }
@@ -196,11 +214,12 @@ public:
   inline bool matchesAMD64v3() const { return m_Exts.matchesAMD64v3() && m_OSAVX; }
   inline bool matchesAMD64v4() const { return m_Exts.matchesAMD64v4() && m_OSAVX; }
 
-protected:
-  
+  static eMFL        xStrToMfl(const std::string_view Mfl);
+  static std::string xMflToStr(eMFL Mfl);
+
+protected:  
   static std::string xFormatProcExts(const xExts& Exts);
   static std::string xFormatMemInfo (const xMem&  Mem );
-
   
   void xDetectExts();
   void xDetectMem ();

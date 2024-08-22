@@ -4,30 +4,31 @@
 */
 
 #include "xProcInfo.h"
+#include "xString.h"
 #include <cstring>
 
 
-#if defined(_MSC_VER)
-#include <intrin.h>
-#elif defined(__GNUC__) || defined(__clang__)
-#include <cpuid.h>
+#if defined(X_PMBB_COMPILER_MSVC)
+  #include <intrin.h>
+#elif defined(X_PMBB_COMPILER_GCC) || defined(X_PMBB_COMPILER_CLANG)
+  #include <cpuid.h>
 #else
-#error "Unknown compiler"
+  #error "Unknown compiler"
 #endif
 
 
-#if (defined(WIN32) || defined(_WIN32) || defined(_WIN64))
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#undef WIN32_LEAN_AND_MEAN
+#if defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+  #undef WIN32_LEAN_AND_MEAN
 #elif __has_include(<unistd.h>)
-#include <unistd.h>
+  #define X_PMBB_SYSTEM_UNISTD 1
+  #include <unistd.h>
 #endif
 
 //=============================================================================================================================================================================
 // Helper functions - CPU
 //=============================================================================================================================================================================
-
 
 namespace {
 
@@ -57,7 +58,7 @@ uint64_t xXGETBV(uint32_t ExtendedControlRegisterIdx)
   __asm("xgetbv" : "=a"(a), "=d"(d) : "c"(ExtendedControlRegisterIdx) : );
   return uint64_t(a) | (uint64_t(d) << 32);
 #else
-  #error "Unknown compiler"
+  #error "Unknown or unsuported compiler"
 #endif
 }
 
@@ -71,7 +72,7 @@ namespace {
 
 int32_t xDetectCacheLineSize()
 {
-#if (defined(WIN32) || defined(_WIN32) || defined(_WIN64))
+#if defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
   DWORD bufferSize = 0;
   SYSTEM_LOGICAL_PROCESSOR_INFORMATION* buffer = 0;
 
@@ -90,7 +91,7 @@ int32_t xDetectCacheLineSize()
   }
   free(buffer);
   return LineSize;
-#elif defined(__linux__)
+#elif defined(X_PMBB_OPERATING_SYSTEM_LINUX)
   FILE* File = 0;
   File = fopen("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size", "r");
   int LineSize = 0;
@@ -107,11 +108,11 @@ int32_t xDetectCacheLineSize()
 int32_t xDetectMemoryPageSize()
 {
   int32_t PageSize = NOT_VALID;
-#if (defined(WIN32) || defined(_WIN32) || defined(_WIN64))
+#if defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
   SYSTEM_INFO SysInfo;
   GetSystemInfo(&SysInfo);
   PageSize = SysInfo.dwPageSize;
-#elif __has_include(<unistd.h>)
+#elif defined(X_PMBB_SYSTEM_UNISTD)
   PageSize = sysconf(_SC_PAGE_SIZE);
 #else
   #error "Unknown system"
@@ -202,6 +203,7 @@ std::string xProcInfo::xExts::eExtToName(eExt Ext)
     case eExt::AMX_BF16            : Result = "AMX_BF16           "; break;
     case eExt::AMX_TILE            : Result = "AMX_TILE           "; break;
     case eExt::AMX_INT8            : Result = "AMX_INT8           "; break;
+    case eExt::HYBRID              : Result = "HYBRID             "; break;
 
     case eExt::MMX_3DNow           : Result = "MMX_3DNow          "; break;
     case eExt::MMX_3DNowExt        : Result = "MMX_3DNowExt       "; break;
@@ -225,16 +227,19 @@ void xProcInfo::detectSysInfo()
   xDetectExts();
   xDetectMem ();
 }
-void xProcInfo::printSysInfo()
+std::string xProcInfo::formatSysInfo()
 {
+  std::string Message; Message.reserve(4096);
   if(!m_ExtsChecked) { xDetectExts(); }
-  printf("%s\n", xFormatProcExts(m_Exts).c_str());
-
-  printf("Detected OS features:\n");
-  printf("  AVX-instructions-allowed = %d\n\n", (int)m_OSAVX);
+  Message += xFormatProcExts(m_Exts) + "\n";
+  
+  Message += "Detected OS features:\n";
+  Message += fmt::format("  AVX-instructions-allowed = {}\n\n", (int)m_OSAVX);
 
   if(!m_MemChecked) { xDetectMem(); }
-  printf("%s\n\n", xFormatMemInfo(m_Mem).c_str());
+  Message += xFormatMemInfo(m_Mem);
+
+  return Message;
 }
 std::string xProcInfo::xFormatProcExts(const xExts& Exts)
 {
@@ -257,20 +262,38 @@ std::string xProcInfo::xFormatMemInfo(const xMem& Mem)
   Message += "  MemoryPageSize = " + std::to_string(Mem.getMemoryPageSize()) + "\n";
   return Message;
 }
-int32_t xProcInfo::determineMicroArchFeatureLevel()
+xProcInfo::eMFL xProcInfo::determineMicroArchFeatureLevel()
 {
   //x86-64-v4 : AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL
-  if(matchesAMD64v4()) { return 4; }
+  if(matchesAMD64v4()) { return eMFL::AMD64v4; }
   //x86-64-v3 : AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE
-  if(matchesAMD64v3()) { return 3; }
+  if(matchesAMD64v3()) { return eMFL::AMD64v3; }
   //x86-64-v2 : CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
-  if(matchesAMD64v2()) { return 2; }
+  if(matchesAMD64v2()) { return eMFL::AMD64v2; }
   //x86-64    : CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
-  if(matchesAMD64v1()) { return 1; }
+  if(matchesAMD64v1()) { return eMFL::AMD64v1; }
   //nothing
-  return 0;
+  return eMFL::UNDEFINED;
 }
-
+xProcInfo::eMFL xProcInfo::xStrToMfl(const std::string_view Mfl)
+{
+  std::string MflU = xString::toUpper(Mfl);
+  return (MflU == "UNDEFINED"                     ) ? eMFL::UNDEFINED :
+         (MflU == "AMD64V1" || MflU == "X86-64"   ) ? eMFL::AMD64v1   :
+         (MflU == "AMD64V2" || MflU == "X86-64-V2") ? eMFL::AMD64v2   :
+         (MflU == "AMD64V3" || MflU == "X86-64-V3") ? eMFL::AMD64v3   :
+         (MflU == "AMD64V4" || MflU == "X86-64-V4") ? eMFL::AMD64v4   :
+                                                      eMFL::INVALID;
+}
+std::string xProcInfo::xMflToStr(eMFL Mfl)
+{
+  return Mfl == eMFL::UNDEFINED ? "UNDEFINED" :
+         Mfl == eMFL::AMD64v1   ? "x86-64"    :
+         Mfl == eMFL::AMD64v2   ? "x86-64-v2" :
+         Mfl == eMFL::AMD64v3   ? "x86-64-v3" :
+         Mfl == eMFL::AMD64v4   ? "x86-64-v4" :
+                                  "INVALID";
+}
 void xProcInfo::xDetectExts()
 {
   //http://www.sandpile.org/x86/cpuid.htm
@@ -431,20 +454,27 @@ xProcInfo::xExts xProcInfo::xDetectProcExts(uint32_t HighestFunctionSupported)
     //EDX
     //NN
     //NN
-    Exts.setExt(eExt::AVX512_4VNNIW     , (CPUInfo[c_RegEDX] & (1<< 2)) != 0);
-    Exts.setExt(eExt::AVX512_4FMAPS     , (CPUInfo[c_RegEDX] & (1<< 3)) != 0);
-    Exts.setExt(eExt::AVX512_BF16       , (CPUInfo[c_RegEDX] & (1<< 5)) != 0);
+    Exts.setExt(eExt::AVX512_4VNNIW       , (CPUInfo[c_RegEDX] & (1<< 2)) != 0);
+    Exts.setExt(eExt::AVX512_4FMAPS       , (CPUInfo[c_RegEDX] & (1<< 3)) != 0);
+    Exts.setExt(eExt::AVX512_BF16         , (CPUInfo[c_RegEDX] & (1<< 5)) != 0);
     Exts.setExt(eExt::AVX512_VP2INTERSECT , (CPUInfo[c_RegEDX] & (1<< 8)) != 0);
-    Exts.setExt(eExt::AVX512_FP16       , (CPUInfo[c_RegEDX] & (1<<23)) != 0);
-    Exts.setExt(eExt::AMX_TILE          , (CPUInfo[c_RegEDX] & (1<<24)) != 0);
-    Exts.setExt(eExt::AMX_INT8          , (CPUInfo[c_RegEDX] & (1<<25)) != 0);    
+    Exts.setExt(eExt::HYBRID              , (CPUInfo[c_RegEDX] & (1<<15)) != 0);
+    Exts.setExt(eExt::AMX_BF16            , (CPUInfo[c_RegEDX] & (1<<22)) != 0);
+    Exts.setExt(eExt::AVX512_FP16         , (CPUInfo[c_RegEDX] & (1<<23)) != 0);
+    Exts.setExt(eExt::AMX_TILE            , (CPUInfo[c_RegEDX] & (1<<24)) != 0);
+    Exts.setExt(eExt::AMX_INT8            , (CPUInfo[c_RegEDX] & (1<<25)) != 0);    
   }
 
   //StandardLevel = 7
   if(HighestFunctionSupported>=7)
   {
     xCPUID(CPUInfo, 7, 1);
-    Exts.setExt(eExt::AMX_BF16 , (CPUInfo[c_RegEAX] & (1<<22)) != 0);
+    // EAX:0 = SHA512
+    // EAX:1 = sm3 
+    // EAX:2 = sm4
+    // rao-int
+    // EAX:3 = avx-vnni
+    
   }
   
 

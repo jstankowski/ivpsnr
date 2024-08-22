@@ -124,7 +124,7 @@ void xPixelOpsAVX::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, 
     }
   }
 }
-void xPixelOpsAVX::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
+void xPixelOpsAVX::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;  
@@ -201,10 +201,9 @@ void xPixelOpsAVX::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, 
 }
 void xPixelOpsAVX::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
-  __m256i Two_I32_V = _mm256_set1_epi32((int32)2);
-
-  const uint16* SrcL0 = Src;
-  const uint16* SrcL1 = Src + SrcStride;
+  const __m256i Two_I32_V = _mm256_set1_epi32((int32)2);
+  const uint16* SrcL0     = Src;
+  const uint16* SrcL1     = Src + SrcStride;
 
   if(((uint32)DstWidth & (uint32)c_RemainderMask16)==0) //Width%16==0
   {
@@ -828,7 +827,7 @@ void xPixelOpsAVX::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
     }
   }
 }
-bool xPixelOpsAVX::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
+bool xPixelOpsAVX::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
 {
   if(BitDepth == 16) { return true; }
 
@@ -845,7 +844,7 @@ bool xPixelOpsAVX::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, 
         __m256i SrcV2  = _mm256_loadu_si256((__m256i*)&Src[x+16]);
         __m256i MaskV1 = _mm256_cmpgt_epi16(SrcV1, MaxValueV); //0 - <=, 0xFFFF - >
         __m256i MaskV2 = _mm256_cmpgt_epi16(SrcV2, MaxValueV); //0 - <=, 0xFFFF - >
-        __m256i Masks  = _mm256_packs_epi16(MaskV1, MaskV2);
+        __m256i Masks  = _mm256_or_si256   (MaskV1, MaskV2);
         uint32  Mask   = _mm256_movemask_epi8(Masks);
         if(Mask) { return false; }
       }
@@ -857,13 +856,13 @@ bool xPixelOpsAVX::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, 
     const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32);
     for(int32 y = 0; y < Height; y++)
     {
-      for(int32 x = 0; x < Width; x += 32)
+      for(int32 x = 0; x < Width32; x += 32)
       {
         __m256i SrcV1  = _mm256_loadu_si256((__m256i*)&Src[x   ]);
         __m256i SrcV2  = _mm256_loadu_si256((__m256i*)&Src[x+16]);
         __m256i MaskV1 = _mm256_cmpgt_epi16(SrcV1, MaxValueV); //0 - <=, 0xFFFF - >
         __m256i MaskV2 = _mm256_cmpgt_epi16(SrcV2, MaxValueV); //0 - <=, 0xFFFF - >
-        __m256i Masks  = _mm256_packs_epi16(MaskV1, MaskV2);
+        __m256i Masks  = _mm256_or_si256   (MaskV1, MaskV2);
         uint32  Mask   = _mm256_movemask_epi8(Masks);
         if(Mask) { return false; }
       }
@@ -1013,7 +1012,7 @@ void xPixelOpsAVX::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
 }
 void xPixelOpsAVX::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, uint16* restrict DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-    if(((uint32)Width & (uint32)c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)Width & (uint32)c_RemainderMask16)==0) //Width%16==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -1242,6 +1241,56 @@ int32 xPixelOpsAVX::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
   }
 
   return NumNonZero;
+}
+bool xPixelOpsAVX::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  {
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width; x += 32)
+      {
+        __m256i Tst_U16_V0 = _mm256_loadu_si256((__m256i*)&Tst[x   ]);
+        __m256i Tst_U16_V1 = _mm256_loadu_si256((__m256i*)&Tst[x+16]);
+        __m256i Ref_U16_V0 = _mm256_loadu_si256((__m256i*)&Ref[x   ]);
+        __m256i Ref_U16_V1 = _mm256_loadu_si256((__m256i*)&Ref[x+16]);
+        __m256i Eq_U16_V0  = _mm256_cmpeq_epi16(Tst_U16_V0, Ref_U16_V0); //0 - !=, 0xFFFF - ==
+        __m256i Eq_U16_V1  = _mm256_cmpeq_epi16(Tst_U16_V1, Ref_U16_V1); //0 - !=, 0xFFFF - ==
+        __m256i Eq_U16_V   = _mm256_and_si256  (Eq_U16_V0, Eq_U16_V1);
+        uint32  EqMask     = _mm256_movemask_epi8(Eq_U16_V);
+        if(EqMask != 0xFFFFFFFF) { return false; }
+      }
+      Tst += TstStride;
+      Ref += RefStride;
+    } //y
+  }
+  else
+  {
+    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32);
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width32; x += 32)
+      {
+        __m256i Tst_U16_V0 = _mm256_loadu_si256((__m256i*)&Tst[x   ]);
+        __m256i Tst_U16_V1 = _mm256_loadu_si256((__m256i*)&Tst[x+16]);
+        __m256i Ref_U16_V0 = _mm256_loadu_si256((__m256i*)&Ref[x   ]);
+        __m256i Ref_U16_V1 = _mm256_loadu_si256((__m256i*)&Ref[x+16]);
+        __m256i Eq_U16_V0  = _mm256_cmpeq_epi16(Tst_U16_V0, Ref_U16_V0); //0 - !=, 0xFFFF - ==
+        __m256i Eq_U16_V1  = _mm256_cmpeq_epi16(Tst_U16_V1, Ref_U16_V1); //0 - !=, 0xFFFF - ==
+        __m256i Eq_U16_V   = _mm256_and_si256  (Eq_U16_V0, Eq_U16_V1);
+        uint32  EqMask     = _mm256_movemask_epi8(Eq_U16_V);
+        if(EqMask != 0xFFFFFFFF) { return false; }
+      }
+      for (int32 x = Width32; x < Width; x++)
+      {
+        if(Tst[x] != Ref[x]) { return false; }
+      }
+      Tst += TstStride;
+      Ref += RefStride;
+    } //y
+  }
+
+  return true;
 }
 
 //===============================================================================================================================================================================================================

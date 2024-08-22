@@ -54,36 +54,7 @@ void xTestUtils::fillGradientXY(uint16* Dst, int32 DstStride, int32 Width, int32
     Dst += DstStride;
   }
 }
-void xTestUtils::fillRandom(uint16* Dst, int32 DstStride, int32 Width, int32 Height, int32 BitDepth, uint32 Seed)
-{
-  const uint32 MaxValueMask = (uint32)xBitDepth2BitMask(BitDepth);
-  uint32 State = Seed;
-  for(int32 y = 0; y < Height; y++)
-  {
-    for(int32 x = 0; x < Width; x++) 
-    { 
-      State = xXorShift32(State);
-      Dst[x] = (uint16)(State & MaxValueMask);
-    }
-    Dst += DstStride;
-  }
-}
-void xTestUtils::fillMidNoise(uint16* Dst, int32 DstStride, int32 Width, int32 Height, int32 BitDepth, int32 Offset, uint32 Seed)
-{
-  const int32 MidValue     = (uint32)xBitDepth2MidValue(BitDepth);
-  const int32 MaxValueMask = (uint32)xBitDepth2BitMask(BitDepth);
-  uint32 State = Seed;
-  for(int32 y = 0; y < Height; y++)
-  {
-    for(int32 x = 0; x < Width; x++)
-    {
-      State = xXorShift32(State);
-      int32 Noise = ((((int32)State) & MaxValueMask) - MidValue) >> (BitDepth - 2);
-      Dst[x] = (uint16)((MidValue + Noise + Offset) & MaxValueMask);
-    }
-    Dst += DstStride;
-  }
-}
+
 
 //===============================================================================================================================================================================================================
 

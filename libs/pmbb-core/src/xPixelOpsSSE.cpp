@@ -662,7 +662,7 @@ void xPixelOpsSSE::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
     }
   }
 }
-bool xPixelOpsSSE::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
+bool xPixelOpsSSE::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
 {
   if(BitDepth == 16) { return true; }
 
@@ -679,7 +679,7 @@ bool xPixelOpsSSE::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, 
         __m128i SrcV2  = _mm_loadu_si128((__m128i*)&Src[x+8]);
         __m128i MaskV1 = _mm_cmpgt_epi16(SrcV1, MaxValueV); //0 - <=, 0xFFFF - >
         __m128i MaskV2 = _mm_cmpgt_epi16(SrcV2, MaxValueV); //0 - <=, 0xFFFF - >
-        __m128i Masks  = _mm_packs_epi16(MaskV1, MaskV2);
+        __m128i Masks  = _mm_or_si128  (MaskV1, MaskV2);
         uint32  Mask   = _mm_movemask_epi8(Masks) & 0xFFFF;
         if(Mask) { return false; }
       }
@@ -691,13 +691,13 @@ bool xPixelOpsSSE::CheckValues(const uint16* Src, int32 SrcStride, int32 Width, 
     const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
     for(int32 y = 0; y < Height; y++)
     {
-      for(int32 x = 0; x < Width; x += 16)
+      for(int32 x = 0; x < Width16; x += 16)
       {
         __m128i SrcV1  = _mm_loadu_si128((__m128i*)&Src[x  ]);
         __m128i SrcV2  = _mm_loadu_si128((__m128i*)&Src[x+8]);
         __m128i MaskV1 = _mm_cmpgt_epi16(SrcV1, MaxValueV); //0 - <=, 0xFFFF - >
         __m128i MaskV2 = _mm_cmpgt_epi16(SrcV2, MaxValueV); //0 - <=, 0xFFFF - >
-        __m128i Masks  = _mm_packs_epi16(MaskV1, MaskV2);
+        __m128i Masks  = _mm_or_si128  (MaskV1, MaskV2);
         uint32  Mask   = _mm_movemask_epi8(Masks) & 0xFFFF;
         if(Mask) { return false; }
       }
@@ -994,6 +994,56 @@ int32 xPixelOpsSSE::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
   }
 
   return NumNonZero;
+}
+bool xPixelOpsSSE::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  if(((uint32)Width & c_RemainderMask8) == 0) //Width%16==0 - fast path without tail
+  {
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width; x += 16)
+      {
+        __m128i Tst_U16_V0 = _mm_loadu_si128((__m128i*)&Tst[x  ]);
+        __m128i Tst_U16_V1 = _mm_loadu_si128((__m128i*)&Tst[x+8]);
+        __m128i Ref_U16_V0 = _mm_loadu_si128((__m128i*)&Ref[x  ]);
+        __m128i Ref_U16_V1 = _mm_loadu_si128((__m128i*)&Ref[x+8]);
+        __m128i Eq_U16_V0  = _mm_cmpeq_epi16(Tst_U16_V0, Ref_U16_V0); //0 - !=, 0xFFFF - ==
+        __m128i Eq_U16_V1  = _mm_cmpeq_epi16(Tst_U16_V1, Ref_U16_V1); //0 - !=, 0xFFFF - ==
+        __m128i Eq_U16_V   = _mm_and_si128  (Eq_U16_V0, Eq_U16_V1);
+        uint32  EqMask     = _mm_movemask_epi8(Eq_U16_V) & 0xFFFF;
+        if(EqMask != 0xFFFF) { return false; }
+      }
+      Tst += TstStride;
+      Ref += RefStride;
+    } //y
+  }
+  else
+  {
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
+    for(int32 y = 0; y < Height; y++)
+    {
+      for(int32 x = 0; x < Width16; x += 16)
+      {
+        __m128i Tst_U16_V0 = _mm_loadu_si128((__m128i*)&Tst[x  ]);
+        __m128i Tst_U16_V1 = _mm_loadu_si128((__m128i*)&Tst[x+8]);
+        __m128i Ref_U16_V0 = _mm_loadu_si128((__m128i*)&Ref[x  ]);
+        __m128i Ref_U16_V1 = _mm_loadu_si128((__m128i*)&Ref[x+8]);
+        __m128i Eq_U16_V0  = _mm_cmpeq_epi16(Tst_U16_V0, Ref_U16_V0); //0 - !=, 0xFFFF - ==
+        __m128i Eq_U16_V1  = _mm_cmpeq_epi16(Tst_U16_V1, Ref_U16_V1); //0 - !=, 0xFFFF - ==
+        __m128i Eq_U16_V   = _mm_and_si128  (Eq_U16_V0, Eq_U16_V1);
+        uint32  EqMask     = _mm_movemask_epi8(Eq_U16_V) & 0xFFFF;
+        if(EqMask != 0xFFFF) { return false; }
+      }
+      for (int32 x = Width16; x < Width; x++)
+      {
+        if(Tst[x] != Ref[x]) { return false; }
+      }
+      Tst += TstStride;
+      Ref += RefStride;
+    } //y
+  }
+
+  return true;
 }
 
 //===============================================================================================================================================================================================================

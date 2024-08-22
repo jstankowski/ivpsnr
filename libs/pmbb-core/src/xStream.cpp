@@ -16,7 +16,7 @@ bool xStream::openFile(tCStr& FilePath, const eMode OpenMode)
   eDirF                   StrmDirF  = eDirF::None;
   std::ios_base::openmode OpenFlags = std::ios_base::binary;
   if(OpenMode == eMode::Read  ) { StrmDirF = eDirF::Read ; OpenFlags |= std::ios_base::in;                       }
-  if(OpenMode == eMode::Write ) { StrmDirF = eDirF::Read ; OpenFlags |= std::ios_base::out;                      }
+  if(OpenMode == eMode::Write ) { StrmDirF = eDirF::Write; OpenFlags |= std::ios_base::out;                      }
   if(OpenMode == eMode::Append) { StrmDirF = eDirF::Write; OpenFlags |= std::ios_base::out | std::ios_base::ate; }
 
   std::fstream* FileHandle = new std::fstream();

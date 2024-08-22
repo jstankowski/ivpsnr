@@ -14,6 +14,7 @@ namespace PMBB_NAMESPACE {
 //===============================================================================================================================================================================================================
 // xPlane
 //===============================================================================================================================================================================================================
+
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // xPlane - general functions
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -51,21 +52,34 @@ template <typename PelType> void xPlane<PelType>::fill(PelType Value)
   xPixelOps::Fill<PelType>(m_Buffer, Value, m_BuffCmpNumPels);
   m_IsMarginExtended = true;
 }
-template <typename PelType> bool xPlane<PelType>::check(const std::string& Name)
+template <typename PelType> bool xPlane<PelType>::check(const std::string& Name) const
 {
   if constexpr(std::is_same_v<PelType, uint16>)
   {
-    bool Correct = xPixelOps::CheckValues(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth);
+    bool Correct = xPixelOps::CheckIfInRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth);
     if(!Correct)
     {
-      fmt::printf("FILE BROKEN " + Name + "\n");
-      xPixelOps::FindBroken(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth);
+      fmt::print("FILE BROKEN " + Name + "\n");
+      std::string Msg = xPixelOps::FindOutOfRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth, -1);
+      fmt::print(Msg);
     }
     return Correct;
   }
   else
   {
     assert(0); return false;
+  }
+}
+template <typename PelType> void xPlane<PelType>::conceal()
+{
+  if constexpr(std::is_same_v<PelType, uint16>)
+  {
+    xPixelOps::ClipToRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth);
+    m_IsMarginExtended = false;
+  }
+  else
+  {
+    assert(0);
   }
 }
 template <typename PelType> void xPlane<PelType>::extend()
@@ -79,7 +93,26 @@ template <typename PelType> void xPlane<PelType>::extend()
     assert(0); 
   }
 }
-
+template <typename PelType> bool xPlane<PelType>::equal(const xPlane* Ref, bool PrintFirstDiscrepancy) const
+{
+  assert(Ref != nullptr && isCompatible(Ref));
+  if constexpr(std::is_same_v<PelType, uint16>)
+  {
+    bool Equal = xPixelOps::CompareEqual(Ref->getAddr(), m_Origin, Ref->getStride(), m_Stride, m_Width, m_Height);
+    if(PrintFirstDiscrepancy && !Equal)
+    {
+      fmt::print("ERROR current plane values differs from reference\n");
+      std::string Msg = xPixelOps::FindOutOfRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth, 1);
+      fmt::print(Msg);
+    }
+    return Equal;
+  }
+  else
+  {
+    assert(0);
+    return false;
+  }
+}
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // xPlane - low level buffer modification / access - dangerous
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -114,6 +147,7 @@ template <typename PelType> bool xPlane<PelType>::swapBuffer(xPlane* TheOther)
   return true;
 }
 
+
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // instantiation for base types
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -132,6 +166,7 @@ template class xPlane< flt64>;
 //===============================================================================================================================================================================================================
 // xPlaneRental
 //===============================================================================================================================================================================================================
+
 template <typename PelType> void xPlaneRental<PelType>::create(int32V2 Size, int32 Margin, int32 BitDepth, uintSize InitSize, uintSize SizeLimit)
 {
   m_Mutex.lock();
@@ -161,7 +196,6 @@ template <typename PelType> void xPlaneRental<PelType>::xDestroyUnit()
     delete Tmp;
   }
 }
-
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // instantiation for base types

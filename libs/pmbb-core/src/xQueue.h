@@ -5,20 +5,22 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
 #include <queue>
 
-#ifdef max
-#undef max
-#endif
-
-#ifdef min
-#undef min
-#endif
+//clanup max min crap
+#ifdef X_PMBB_OPERATING_SYSTEM_WINDOWS
+  #ifdef max
+    #undef max
+  #endif
+  #ifdef min
+    #undef min
+  #endif
+#endif //X_PMBB_OPERATING_SYSTEM_WINDOWS
 
 namespace PMBB_NAMESPACE {
 

@@ -5,11 +5,12 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include "xQueue.h"
 #include "xEvent.h"
 #include <vector>
 #include <map>
+#include <stack>
 #include <future>
 
 namespace PMBB_NAMESPACE {
@@ -19,69 +20,79 @@ namespace PMBB_NAMESPACE {
 class xThreadPool
 {
 public:
-  enum class eTaskStatus
-  {
-    INVALID = NOT_VALID,
-    UNKNOWN = 0,
-    Waiting,
-    Processed,
-    Completed,
-    Terminate,
-  };
-
-public:
-  class xWorkerTask
+  class xPoolTask
   {
   public:
+    enum class eStatus : int8
+    {
+      INVALID = NOT_VALID,
+      UNKNOWN = 0,
+      Waiting,
+      Processed,
+      Completed,
+    };
+
+    enum class eType : int8
+    {
+      UNKNOWN = 0,
+      Function,
+      Terminator,
+      Custom
+    };
+    
     static const int8 c_DefaultPriority = 0;
 
   protected:
-    uintPtr     m_ClientId;
-    int8        m_Priority;
-    eTaskStatus m_Status;
+    uintPtr m_ClientId = (uintPtr)nullptr;
+    int8    m_Priority = c_DefaultPriority;
+    eType   m_Type     = eType  ::UNKNOWN;
+    eStatus m_Status   = eStatus::UNKNOWN;
 
   protected:
     virtual void WorkingFunction(int32 ThreadIdx) = 0;
 
   public:
-             xWorkerTask(                               ) { m_ClientId = (uintPtr)nullptr;  m_Priority = c_DefaultPriority; m_Status = eTaskStatus::UNKNOWN; }
-             xWorkerTask(uintPtr ClientId, int8 Priority) { m_ClientId = ClientId;          m_Priority = Priority;          m_Status = eTaskStatus::UNKNOWN; }
-    virtual ~xWorkerTask(                               ) { }
+//             xPoolTask(uintPtr ClientId, int8 Priority) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::UNKNOWN; m_Status = eStatus::UNKNOWN; }
+    virtual ~xPoolTask() {};
 
-    static  void StarterFunction(xWorkerTask* WorkerTask, int32 ThreadIdx);
+    static  void StarterFunction(xPoolTask* PoolTask, int32 ThreadIdx);
 
-    void         setClientId (uintPtr     ClientId ){ m_ClientId = ClientId; }
-    uintPtr      getClientId (                     ){ return m_ClientId; }
-    void         setPriority (int8        Priority ){ m_Priority = Priority; }
-    int8         getPriority (                     ){ return m_Priority; }
-    void         setStatus   (eTaskStatus Status   ){ m_Status = Status; }
-    eTaskStatus  getStatus   (                     ){ return m_Status; }
+    void    setClientId(uintPtr ClientId )       { m_ClientId = ClientId; }
+    uintPtr getClientId(                 ) const { return m_ClientId;     }
+    void    setPriority(int8    Priority )       { m_Priority = Priority; }
+    int8    getPriority(                 ) const { return m_Priority;     }
+    eType   getType    (                 ) const { return m_Type;         }
+    void    setStatus  (eStatus Status   )       { m_Status = Status;     }
+    eStatus getStatus  (                 ) const { return m_Status;       }
 
   public:
     class Comparator
     {
     public:
-      bool operator()(xWorkerTask* a, xWorkerTask* b) { return a->getPriority() < b->getPriority(); }
+      bool operator()(xPoolTask* a, xPoolTask* b) { return a->getPriority() < b->getPriority(); }
     };
   };
 
-  class xWorkerTaskFunction : public xWorkerTask
+  class xPoolTaskFunction : public xPoolTask
   {
-  protected:
-    std::function<void(int32)> m_Function; //void Function(int32 ThreadIdx)
-
   public:
-    xWorkerTaskFunction(uintPtr ClientId, int8 Priority, std::function<void(int32)> Function) : xWorkerTask(ClientId, Priority) { m_Function = Function; m_Status = eTaskStatus::Waiting; }
-
+    using tFunct = std::function<void(int32)>; //void Function(int32 ThreadIdx)
+  protected:
+    tFunct m_Function; //void Function(int32 ThreadIdx)
+  public:
+    xPoolTaskFunction(                                                ) { m_ClientId = 0       ; m_Priority = int8_min; m_Type = eType::Function; m_Status = eStatus::UNKNOWN; m_Function = nullptr ; }
+    xPoolTaskFunction(uintPtr ClientId, int8 Priority, tFunct Function) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::Function; m_Status = eStatus::Waiting; m_Function = Function; }
+    
+    void setPrioFunction(int8 Priority, tFunct& Function) { m_Priority = Priority; m_Function = Function; }
   protected:
     void WorkingFunction(int32 ThreadIdx) final { m_Function(ThreadIdx); }
   };
 
 protected:
-  class xWorkerTaskTerminator : public xWorkerTask
+  class xPoolTaskTerminator : public xPoolTask
   {
   public:
-    xWorkerTaskTerminator() { m_ClientId = (uintPtr)nullptr;  m_Priority = int8_max; m_Status = eTaskStatus::Terminate; }
+    xPoolTaskTerminator() { m_ClientId = (uintPtr)nullptr; m_Priority = int8_max; m_Type = eType::Terminator; m_Status = eStatus::Waiting; }
   protected:
     void WorkingFunction(int32 /*ThreadIdx*/) final {}
   };
@@ -94,33 +105,32 @@ protected:
   std::vector<std::thread>         m_Thread;
   std::vector<std::thread::id>     m_ThreadId;
 
-  //input queque
-  xPriorityQueue<xWorkerTask*> m_WaitingTasks;
-
-  //output
-  std::map<uintPtr, xQueue<xWorkerTask*>> m_CompletedTasks;
-
-
+  //input & output queques
+  xPriorityQueue<xPoolTask*>            m_WaitingTasks;
+  std::map<uintPtr, xQueue<xPoolTask*>> m_CompletedTasks;
+  
 protected:  
   uint32        xThreadFunc();
   static uint32 xThreadStarter(xThreadPool* ThreadPool) { return ThreadPool->xThreadFunc(); }
 
 public:
   xThreadPool() : m_Event(true, false) { m_NumThreads = 0; }
+  xThreadPool            (const xThreadPool&) = delete; //delete copy constructor
+  xThreadPool& operator= (const xThreadPool&) = delete; //delete assignement operator
 
-  void         create   (int32 NumThreads, int32 WaitingQueueSize);
-  void         destroy  ();
-               
-  bool         registerClient  (uintPtr ClientId, int32 CompletedQueueSize);
-  bool         unregisterClient(uintPtr ClientId);
+  void       create   (int32 NumThreads, int32 WaitingQueueSize);
+  void       destroy  ();
+             
+  bool       registerClient  (uintPtr ClientId, int32 CompletedQueueSize);
+  bool       unregisterClient(uintPtr ClientId);
 
-  void         addWaitingTask       (xWorkerTask* Task) { m_WaitingTasks.EnqueueWait(Task); }
-  xWorkerTask* receiveCompletedTask (uintPtr ClientId ) { xWorkerTask* Task; m_CompletedTasks.at(ClientId).DequeueWait(Task); return Task; }  
-  int32        getWaitingQueueSize  (                 ) { return m_WaitingTasks.getSize(); }
-  bool         isWaitingQueueEmpty  (                 ) { return m_WaitingTasks.isEmpty(); }
-  int32        getCompletedQueueSize(uintPtr ClientId ) { return m_CompletedTasks.at(ClientId).getSize(); }
-  bool         isCompletedQueueEmpty(uintPtr ClientId ) { return m_CompletedTasks.at(ClientId).isEmpty(); }
-  int32        getNumThreads        (                 ) { return m_NumThreads; }
+  void       addWaitingTask       (xPoolTask* Task  ) { m_WaitingTasks.EnqueueWait(Task); }
+  xPoolTask* receiveCompletedTask (uintPtr ClientId ) { xPoolTask* Task; m_CompletedTasks.at(ClientId).DequeueWait(Task); return Task; }
+  int32      getWaitingQueueSize  (                 ) { return m_WaitingTasks.getSize(); }
+  bool       isWaitingQueueEmpty  (                 ) { return m_WaitingTasks.isEmpty(); }
+  int32      getCompletedQueueSize(uintPtr ClientId ) { return m_CompletedTasks.at(ClientId).getSize(); }
+  bool       isCompletedQueueEmpty(uintPtr ClientId ) { return m_CompletedTasks.at(ClientId).isEmpty(); }
+  int32      getNumThreads        (                 ) { return m_NumThreads; }
 };
 
 //===============================================================================================================================================================================================================
@@ -128,25 +138,31 @@ public:
 class xThreadPoolInterface
 {
 public:
-  using xWorkerTask = xThreadPool::xWorkerTask;
+  using tTask  = xThreadPool::xPoolTask;
+  using tTaskF = xThreadPool::xPoolTaskFunction;
 
 protected:
-  xThreadPool* m_ThreadPool;
-  int8         m_Priority;
-  int32        m_NumChunks;
+  const uintPtr m_Id         = 0;
+  xThreadPool*  m_ThreadPool = nullptr;
+  int8          m_Priority   = std::numeric_limits<uint8>::min();
+  int32         m_NumChunks  = NOT_VALID;
+
+  std::stack<xThreadPool::xPoolTaskFunction*> m_UnusedTasks;
 
 public:
-  xThreadPoolInterface() { m_ThreadPool = nullptr; m_Priority = xThreadPool::xWorkerTask::c_DefaultPriority; m_NumChunks = NOT_VALID; }
+  xThreadPoolInterface() : m_Id((uintPtr)this) { m_ThreadPool = nullptr; m_Priority = tTask::c_DefaultPriority; m_NumChunks = NOT_VALID; }
+  xThreadPoolInterface            (const xThreadPoolInterface&) = delete; //delete copy constructor
+  xThreadPoolInterface& operator= (const xThreadPoolInterface&) = delete; //delete assignement operator
 
-  void init   (xThreadPool* ThreadPool, int32 CompletedQueueSize);
+  void init   (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks);
   void uininit();
   bool isActive() { return m_ThreadPool != nullptr; }
 
-  void         addWaitingTask        (xThreadPool::xWorkerTask* Task);
-  void         addWaitingTask        (std::function<void(int32)> Function);
-  xWorkerTask* receiveCompletedTask  () { return m_ThreadPool->receiveCompletedTask(getClientId()); }
-  void         waitUntilTasksFinished(int32 NumTasksToWaitFor);
-  void         executeTask           (std::function<void(int32)> Function);
+  void   addWaitingTask        (tTask* Task);
+  void   addWaitingTask        (std::function<void(int32)> Function);
+  tTask* receiveCompletedTask  () { return m_ThreadPool->receiveCompletedTask(getClientId()); }
+  void   waitUntilTasksFinished(int32 NumTasksToWaitFor);
+  void   executeTask           (std::function<void(int32)> Function);
 
   int32  getWaitingQueueSize  () { return m_ThreadPool->getWaitingQueueSize(); }
   bool   isWaitingQueueEmpty  () { return m_ThreadPool->isWaitingQueueEmpty(); }

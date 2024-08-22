@@ -72,7 +72,9 @@ endif()
 include(CheckIPOSupported)
 check_ipo_supported(RESULT lto_is_supported OUTPUT output)
 if(lto_is_supported)
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto")
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
   else()
     set (CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -121,17 +123,14 @@ endif()
 
 if (PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES)
   set(PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH  TRUE  CACHE BOOL "")
- #set(PMBB_GENERATE_APP_WITH_WITH_RUNTIME_LIBRARY_SELECTOR TRUE  CACHE BOOL "") # NOT IMPLEMENTED YET
   set(PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL           FALSE CACHE BOOL "")
 else()
   set(PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH  FALSE CACHE BOOL "" FORCE)
- #set(PMBB_GENERATE_APP_WITH_WITH_RUNTIME_LIBRARY_SELECTOR TRUE  CACHE BOOL "" FORCE) # NOT IMPLEMENTED YET
   set(PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL           FALSE CACHE BOOL "" FORCE)
 endif()
 
 message(STATUS "${PROJECT_NAME} --> PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES         = ${PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES}")
 message(STATUS "${PROJECT_NAME} --> PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH  = ${PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH}")
-#message(STATUS "${PROJECT_NAME} --> PMBB_GENERATE_APP_WITH_WITH_RUNTIME_LIBRARY_SELECTOR = ${PMBB_GENERATE_APP_WITH_WITH_RUNTIME_LIBRARY_SELECTOR}") # NOT IMPLEMENTED YET
 message(STATUS "${PROJECT_NAME} --> PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL           = ${PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL}")
 
 if(X_IS_AMD64 AND X_IS_64BIT)
@@ -193,14 +192,14 @@ endif()
 #=========================================================================================================================================
 # library PUT-Multimedia-Building-Blocks
 #=========================================================================================================================================
-add_subdirectory(libs/pmbb-base    libpmbb-base   )
-add_subdirectory(libs/pmbb-core    libpmbb-core   )
-add_subdirectory(libs/pmbb-ivpsnr  libpmbb-ivpsnr )
+add_subdirectory(libs/pmbb-base libpmbb-base)
+add_subdirectory(libs/pmbb-core libpmbb-core)
+add_subdirectory(libs/pmbb-ivqm libpmbb-ivqm)
 
 #=========================================================================================================================================
 # apps
 #=========================================================================================================================================
-add_subdirectory(apps/IVPSNR     IVPSNR    )
+add_subdirectory(apps/IVPSNR IVPSNR)
 
 #=========================================================================================================================================
 # debug

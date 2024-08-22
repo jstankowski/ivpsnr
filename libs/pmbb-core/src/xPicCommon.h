@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include "xVec.h"
 #include <mutex>
 
@@ -22,6 +22,7 @@ public:
   static constexpr int32 c_DefMargin  = 4;
 
 protected:
+  int32V2 m_Size             = { NOT_VALID , NOT_VALID };
   int32   m_Width            = NOT_VALID;
   int32   m_Height           = NOT_VALID;
   int32   m_Margin           = NOT_VALID;
@@ -37,6 +38,12 @@ protected:
   int64   m_Timestamp        = NOT_VALID;
 
   bool    m_IsMarginExtended = false;
+
+public:
+  xPicCommon() = default;
+  //avoid pictures beeing copied or assigned
+  xPicCommon(const xPicCommon&) = delete;  //delete copy constructor
+  xPicCommon& operator= (const xPicCommon&) = delete; //delete assignement operator
 
 protected:
   void xInit  (int32V2 Size, int32 BitDepth, int32 Margin, int32 NumCmps, int32 PelNumBytes);

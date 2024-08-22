@@ -160,7 +160,7 @@ void xPixelOpsSTD::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
     Src += SrcStride;
   }
 }
-bool xPixelOpsSTD::CheckValues(const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth)
+bool xPixelOpsSTD::CheckIfInRange(const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth)
 {
   if(BitDepth == 16) { return true; }
 
@@ -172,21 +172,30 @@ bool xPixelOpsSTD::CheckValues(const uint16* Src, int32 Stride, int32 Width, int
   }
   return true;
 }
-bool xPixelOpsSTD::FindBroken(const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth)
+xPixelOpsSTD::tStr xPixelOpsSTD::FindOutOfRange(const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth, int32 MsgNumLimit)
 {
   const int32 MaxValue = xBitDepth2MaxValue(BitDepth);
-  bool  Correct = true;
+  tStr  Message  = "";
+  int32 NumFound = 0;
   for(int32 y = 0; y < Height; y++)
   {
     for(int32 x = 0; x < Width; x++)
     {
-      if(Src[x] > MaxValue) { fmt::printf("FILE BROKEN (y=%d, x=%d, VALUE=%d, Expected=[0-%d])\n", y, x, Src[x], MaxValue); Correct = false; }
+      if(Src[x] > MaxValue)
+      { 
+        Message += fmt::format("DETECTED out-of-range value (y={:d}, x={:d}, VALUE={:d}, Expected=[0-{:d}])\n", y, x, Src[x], MaxValue);
+        if(MsgNumLimit>0 && NumFound++ >= MsgNumLimit)
+        { 
+          Message += fmt::format("DETECTED number of out-of-range values exceeds limit (MsgNumLimit={:d})\n", MsgNumLimit);
+          break;
+        }
+      }
     }
     Src += Stride;
   }
-  return Correct;
+  return Message;
 }
-void xPixelOpsSTD::ConcealBroken(uint16* restrict Ptr, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
+void xPixelOpsSTD::ClipToRange(uint16* restrict Ptr, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth)
 {
   const uint16 MaxValue = (uint16)xBitDepth2MaxValue(BitDepth);
   for(int32 y = 0; y < Height; y++)
@@ -267,12 +276,45 @@ int32 xPixelOpsSTD::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
 
   for(int32 y = 0; y < Height; y++)
   {
-    for(int32 x = 0; x < Width; x++) { if(Src[x] != 0) { NumNonZero++; }
-    }
+    for(int32 x = 0; x < Width; x++) { if(Src[x] != 0) { NumNonZero++; } }
     Src += SrcStride;
   }
 
   return NumNonZero;
+}
+bool xPixelOpsSTD::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++) { if(Tst[x] != Ref[x]) { return false; } }
+    Tst += TstStride;
+    Ref += RefStride;
+  }
+
+  return true;
+}
+xPixelOpsSTD::tStr xPixelOpsSTD::FindDiscrepancy(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 MsgNumLimit)
+{
+  tStr  Message  = "";
+  int32 NumFound = 0;
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++)
+    {
+      if(Tst[x] != Ref[x])
+      { 
+        Message += fmt::format("DETECTED out-of-range value (y={:d}, x={:d}, VALUE Tst={:d} Ref={:d})\n", y, x, Tst[x], Ref[x]);
+        if(MsgNumLimit>0 && NumFound++ >= MsgNumLimit)
+        { 
+          Message += fmt::format("DETECTED number of out-of-range values exceeds limit (MsgNumLimit={:d})\n", MsgNumLimit);
+          break;
+        }
+      }
+    }
+    Tst += TstStride;
+    Ref += RefStride;
+  }
+  return Message;
 }
 
 //===============================================================================================================================================================================================================

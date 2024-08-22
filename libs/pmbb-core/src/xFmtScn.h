@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include "xVec.h"
 #include <string>
 #include <vector>
@@ -17,13 +17,17 @@ namespace PMBB_NAMESPACE {
 class xFmtScn
 {
 public:
-  static int32V2 scanResolution(const std::string& ResolutionString); //parse resolution (format {d}x{d} or {d}X{d})
-  static int32V4 scanIntWeights(const std::string& CmpWeightsString); //parse vector of 4 nonnegative integers (format {d}:{d}:{d}:{d}), returns {-1, -1, -1, -1} on failure
-  static flt32V4 scanFltWeights(const std::string& CmpWeightsString); //parse vector of 4 nonnegative floats   (format {f}:{f}:{f}:{f}), returns {-1, -1, -1, -1} on failure
+  using tTpCfBd = std::tuple<eImgTp, eCrF, int32>;
 
-  static std::string formatResolution(const int32V2 Resolution) { return fmt::sprintf("%dx%d", Resolution.getX(), Resolution.getY()); }
-  static std::string formatIntWeights(const int32V4 CmpWeights) { return fmt::sprintf("%d:%d:%d:%d", CmpWeights[0], CmpWeights[1], CmpWeights[2], CmpWeights[3]); }
-  static std::string formatFltWeights(const flt32V4 CmpWeights) { return fmt::sprintf("%.2f:%.2f:%.2f:%.2f", CmpWeights[0], CmpWeights[1], CmpWeights[2], CmpWeights[3]); }
+public:
+  static int32V2 scanResolution (const std::string& ResolutionString ); //parse resolution (format {d}x{d} or {d}X{d})
+  static tTpCfBd scanPixelFormat(const std::string& PixelFormatString); //parse pixel format yuvXXXpYYle
+  static int32V4 scanIntWeights (const std::string& CmpWeightsString ); //parse vector of 4 nonnegative integers (format {d}:{d}:{d}:{d}), returns {-1, -1, -1, -1} on failure
+  static flt32V4 scanFltWeights (const std::string& CmpWeightsString ); //parse vector of 4 nonnegative floats   (format {f}:{f}:{f}:{f}), returns {-1, -1, -1, -1} on failure
+
+  static std::string formatResolution(const int32V2 Resolution) { return fmt::format("{:d}x{:d}", Resolution.getX(), Resolution.getY()); }
+  static std::string formatIntWeights(const int32V4 CmpWeights) { return fmt::format("{:d}:{:d}:{:d}:{:d}", CmpWeights[0], CmpWeights[1], CmpWeights[2], CmpWeights[3]); }
+  static std::string formatFltWeights(const flt32V4 CmpWeights) { return fmt::format("{:.2f}:{:.2f}:{:.2f}:{:.2f}", CmpWeights[0], CmpWeights[1], CmpWeights[2], CmpWeights[3]); }
 };
 
 //===============================================================================================================================================================================================================
@@ -45,7 +49,7 @@ public:
   using tResI32   = std::tuple<int32  , eResult>;
   using tValRes   = std::tuple<bool, std::string>;
 
-  static tValRes   validateFileParams(const std::string& FilePath, int32V2 PictureSize, int32 BitDepth, int32 ChromaFormat);
+  static tValRes   validateFileParams(const std::string& FilePath, int32V2 PictureSize, int32 BitDepth, eCrF ChromaFormat);
 
   static tResI32V2 determineResolutionFromFilePath  (const std::string& FilePath);
   static tResI32   determineChromaFormatFromFilePath(const std::string& FilePath);

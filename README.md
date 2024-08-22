@@ -7,6 +7,9 @@ The software calculates IV-PSNR, WS-PSNR and PSNR metrics.
 The idea behind the IV-PSNR mertric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
 **A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**
 
+The IV-PSNR software and its architecture is described in following paper [IVSOFT]:
+**J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)**
+
 ## 2. Authors
 
 * Jakub Stankowski   - Poznan University of Technology, Poznań, Poland  
@@ -14,13 +17,19 @@ The idea behind the IV-PSNR mertric, its detailed description and evaluation can
 
 ## 3. License
 
+## 3.1. TLDR
+
+3-Clause BSD License
+
+## 3.2. Full text
+
 ```txt
 The copyright in this software is being made available under the BSD
 License, included below. This software may be subject to other third party
 and contributor rights, including patent rights, and no such rights are
 granted under this license.
 
-Copyright (c) 2019-2023, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
+Copyright (c) 2019-2024, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -49,40 +58,58 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ## 4. Building 
 
-Building the IV-PSNR software requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 8.0, clang >= 5.0, MSVC >= 19.15). For user convenience, we prepared a set of scripts for easy "one click" configure and build:
-* *configure_and_build.bat* - for Windows users
-* *configure_and_build.sh* - for Unix/Linux users
+Building the IV-PSNR software requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 8.0, clang >= 5.0, MSVC >= 19.15).
 
 The IV-PSNR application and its build system is designed to create fastest possible binary. On x86-64 microarchitectures the build system can create four version of compiled application, each optimized for one predefined x86-64 Microarchitecture Feature Levels [x86-64, x86-64-v2, x86-64-v3, x86-64-v4] (defined in https://gitlab.com/x86-psABIs/x86-64-ABI). The final binary consists of this four optimized variants and a runtime dynamic dispatcher. The dispatcher uses CPUID instruction to detect available instruction set extensions and selects the fastest possible code path. 
 
 The IV-PSNR CMake project defines the following parameters:
+
 | Variable | Type | Description |
 | :------- | :--- | :---------- |
 | `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`        | BOOL | Enables generation of multiple code paths, optimized for each variant of x86-64 Microarchitecture Feature Levels. |
 | `PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH` | BOOL | Enables building single application with runtime dynamic dispatch. Requires `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES=True`. |
 | `PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL`          | BOOL | Enables building multiple applications, each optimized for selected x86-64 Microarchitecture Feature Level. Requires `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES=True`. |
-| `PMBB_BUILD_WITH_MARCH_NATIVE`                        | BOOL | Enable option to force compiler to tune generated code for the micro-architecture and ISA extensions of the host CPU. Conflicts with `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`. Generated binary is not portable across different microarchitecures. |
+| `PMBB_BUILD_WITH_MARCH_NATIVE`                        | BOOL | Enable option to force compiler to tune generated code for the micro-architecture and ISA extensions of the host CPU. This option works only when GCC or clang compiler is used since MSVC is unable to adapt native architecture. Conflicts with `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`. Generated binary is not portable across different microarchitecures. |
+| `PMBB_GENERATE_TESTING`                               | BOOL | Enables generation of unit tests for critical data processing routines. |
+
+For users convenience, we prepared a set of scripts for easy "one click" configure and build:
+* *configure_and_build.bat* - for Windows users
+* *configure_and_build.sh* - for Unix/Linux users
+
+For developers convenience, we prepared a set of scripts for easy "one click" configure in development mode - without multi-architecture build and dynamic dispatch:
+* *configure_for_developement.bat* - for Windows users
+* *configure_for_developement.sh* - for Unix/Linux users
+
+The *configure_and_build* and *configure_for_developement* uses different set of CMake parameters:
+
+| Variable | configure_and_build | configure_for_developement |
+| :------- | :------------------ | :------------------------- |
+| `PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES`        | True  | False |
+| `PMBB_GENERATE_SINGLE_APP_WITH_WITH_RUNTIME_DISPATCH` | True  | False |
+| `PMBB_GENERATE_DEDICATED_APPS_FOR_EVERY_MFL`          | False | False |
+| `PMBB_BUILD_WITH_MARCH_NATIVE`                        | False | True  |
+| `PMBB_GENERATE_TESTING`                               | False | True  |
 
 ## 5. Usage
 
 ### 5.1. Commandline parameters
 
-Commandline parameters are parsed from left to right. Multiple config files are allowed. Moreover config file parameters can be override or added via commandline.  
+Commandline parameters are parsed from left to right. Multiple config files are allowed. Moreover, config file parameters can be overridden or added via commandline.  
 
 #### General parameters
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-i0  | InputFile0       | YUV file path - reference |
-|-i1  | InputFile1       | YUV file path - tested |
-|-w   | PictureWidth     | Width of sequence |
-|-h   | PictureHeight    | Height of sequence |
-|-bd  | BitDepth         | Bit depth (optional, default 8, up to 14) |
-|-cf  | ChromaFormat     | Chroma format (optional, default 420) [420, 444] |
-|-s0  | StartFrame0      | Start frame (optional, default 0) |
-|-s1  | StartFrame1      | Start frame (optional, default 0) |
-|-l   | NumberOfFrames   | Number of frames to be processed (optional, default -1=all) |
-|-r   | ResultFile       | Output file path for printing result(s) (optional) |
+|-i0  | InputFile0       | YUV file path - input sequence 0 |
+|-i1  | InputFile1       | YUV file path - input sequence 1 |
+|-w   | PictureWidth     | Width of input sequence |
+|-h   | PictureHeight    | Height of input sequence |
+|-bd  | BitDepth         | Bit depth (optional, default=8, up to 14) |
+|-cf  | ChromaFormat     | Chroma format (optional, default=420) [420, 444] |
+|-s0  | StartFrame0      | Start frame 0 (optional, default=0) |
+|-s1  | StartFrame1      | Start frame 1 (optional, default=0) |
+|-l   | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
+|-o   | ResultFile       | Output file path for printing result(s) (optional) |
 
 #### Masked (weighted) mode parameters
 
@@ -97,16 +124,24 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
 |-erp | Equirectangular  | Equirectangular sequence (flag, default disabled) |
-|-lor | LonRangeDeg      | Range for ERP sequence in degrees - Longitudinal (optional, default 360) |
-|-lar | LatRangeDeg      | Range for ERP sequence in degrees - Lateral (optional, default 180) |
+|-lor | LonRangeDeg      | Range for ERP sequence in degrees - Longitudinal (optional, default=360) |
+|-lar | LatRangeDeg      | Range for ERP sequence in degrees - Lateral (optional, default=180) |
 
-#### IV-PSNR specific parameters
+####  Metrics parameters
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-sr  | SearchRange      | IV-PSNR search range around center point (optional, default 2=5x5) |
-|-cws | ComponentWeights | IV-PSNR component weights ("Lm:Cb:Cr:0" - per component integer weight, default "4:1:1:0", quotes are required, requires USE_RUNTIME_CMPWEIGHTS=1) |
-|-unc | UnnoticeableCoef | IV-PSNR unnoticeable color difference threshold coeff ("Lm:Cb:Cr:0" - per component coeff, default "0.01:0.01:0.01:0", quotes are required) |
+|-rgb | CalcMetricInRGB  | Calculate metrics in RGB color space (flag, default disabled). Enables on-demand convesion from YCbCr to RGB |
+|-cs  | ColorSpace       | Color space of input YUV file (optional, required by CalcMetricInRGB) [BT601, SMPTE170M, BT709, SMPTE240M, BT2020] |
+
+#### IV specific parameters
+
+| Cmd | ParamName        | Description |
+|:----|:-----------------|:------------|
+|-sr  | SearchRange      | IV-metric search range around center point (optional, default=2 --> 5x5) |
+|-cws | CmpWeightsSearch | IV-metric component weights used during search ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory, requires USE_RUNTIME_CMPWEIGHTS=1) |
+|-cwa | CmpWeightsAverage| IV-metric component weights used during averaging ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory) |
+|-unc | UnnoticeableCoef | IV-metric unnoticable color difference threshold coeff ("Lm:Cb:Cr:0" or "R:G:B:0" - per component coeff, default="0.01:0.01:0.01:0", quotes are mandatory) |
 
 #### WS-PSNR specific parameters
 
@@ -114,14 +149,19 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |:----|:-----------------|:------------|
 |-ws8 | Legacy8bitWSPSNR | Use 1020 as peak value for 10-bps videos in WSPSNR metric (provides compatibility with original WSPSNR implementation, optional, default=0) |
 
+#### Validation parameters
+
+| Cmd | ParamName        | Description |
+|:----|:-----------------|:------------|
+|-ipa | InvalidPelActn   | Select action taken if invalid pixel value is detected (optional, default=STOP) [SKIP = disable pixel value checking, WARN = print warning and ignore, STOP = stop execution, CNCL = try to conceal by clipping to bit depth range] |
+|-nma | NameMismatchActn | Select action taken if parameters derived from filename are different than provided as input parameters. Checks resolution, bit depth and chroma format. (optional, default=WARN) [SKIP = disable checking, WARN = print warning and ignore, STOP = stop execution] |
+
 #### Application parameters
 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
-|-t   | NumberOfThreads  | Number of worker threads (optional, default -1=all, suggested 4-8, 0=disables internal thread pool) |
+|-t   | NumberOfThreads  | Number of worker threads(optional, default=-2, suggested ~8 for IV-PSNR) [-1 = all available threads, -2 = reasonable auto] |
 |-ilp | InterleavedPic   | Use additional image buffer with interleaved layout for IV-PSNR, (improves performance at a cost of increased memory usage, optional, default=1) |
-|-ipa | InvalidPelActn   | Select action taken if invalid pixel value is detected (optional, default STOP) [SKIP - disable pixel value checking, WARN - print warning and ignore, STOP - stop execution, CNCL - try to conceal by clipping to bit depth range] |
-|-nma | NameMismatchActn | Select action taken if parameters derived from filename are different than provided as input parameters. Checks resolution, bit depth and chroma format. (optional, default WARN) [SKIP - disable checking, WARN - print warning and ignore, STOP - stop execution] |
 |-v   | VerboseLevel     | Verbose level (optional, default=1) |
 
 #### External config file
@@ -130,22 +170,27 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |:----|:-----------------|:------------|
 | -c  | n/a              | Valid path to external config file - in INI format (optional). Multiple config files can be provided by using multiple "-c" arguments. Config files are processed in arguments order. Content of config files are merged while repeating values are overwritten. |
 
+#### Dynamic dispatcher parameters
+| Cmd                | Description |
+|:-------------------|:------------|
+| --DispatchForceMFL | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]
+| --DispatchVerbose  | Verbose level for runtime dispatch module (optional, default=0) |
+
 ### 5.2. Verbose level
 
 | Value | Behavior |
 |:------|:---------|
-| 0 | final PSNR, WSPSNR, IVPSNR values only |
+| 0 | final (average) metric values only |
 | 1 | 0 + configuration + detected frame numbers |
-| 2 | 1 + argc/argv + frame level PSNR, WSPSNR, IVPSNR |
-| 3 | 2 + computing time (LOAD, PSNR, WSPSNR, IVPSNR) (uses high_resolution_clock, could slightly slow down computations) |
-| 4 | 3 + IVPSNR specific debug data (GlobalColorShift, R2T+T2R, NumNonMasked) |
+| 2 | 1 + argc/argv + frame level metric values |
+| 3 | 2 + computing time (could slightly slow down computations) |
+| 4 | 3 + IV specific debug data (GlobalColorShift, R2T+T2R, NumNonMasked) |
 
 ### 5.3. Compile-time parameters
 
 | Parameter name | Default value | Description |
 |:------------|:--------------|:------------|
-| USE_SIMD               | 1 | use SIMD (to be precise... use SSE 4.1 or AVX2) |
-| USE_KBNS               | 1 | use Kahan-Babuška-Neumaier floating point summation algorithm (reduces accumulation errors) |
+| USE_SIMD               | 1 | use SIMD (to be precise... use SSE 4.1 or AVX2 or AVX512) |
 | USE_RUNTIME_CMPWEIGHTS | 1 | use component weights provided at runtime |
 
 ### 5.4. Examples
@@ -177,17 +222,19 @@ PictureHeight   = 2048
 BitDepth        = 10
 ChromaFormat    = 420
 VerboseLevel    = 3
-OutputFile      = "IV-PSNR.txt"
+OutputFile      = "result.txt"
 ```
 
 ### 5.5. Pixel values checking notes (InvalidPelActn)
+
 Before calculating the IV-PSNR metric the software scans the content of YUV file in order to evaluate if all pixel values are in range `[0, MaxVal]` where `MaxVal = (1<<BitDepth) - 1`. If invalid pel is detected the software can take following actions based on InvalidPelActn parameter value:
 * SKIP - disable pixel value checking
-* WARN - print warning and ignore invalid pel values (may lead to unreliable IV-PSNR, WS-PSNR and PSNR metrics value)
+* WARN - print warning and ignore invalid pel values (may lead to unreliable metrics value)
 * STOP - print warning and stop execution
 * CNCL - print warning and try to conceal the pel value by clipping to highest value within bit depth range
 
 ### 5.6. Filename (filepath) parameters mismatch checking notes (InvalidPelAction)
+
 Before opening the YUV file the software tries to derive important video parameters (resolution, bit depth and chroma format) from file name and file path. If mismatch between parameters provided from commandline (or config file) and derived values is detected, the software can take following actions based on NameMismatchActn parameter value:
 * SKIP - disable pixel value checking
 * WARN - print warning and ignore invalid pel values
@@ -197,11 +244,38 @@ Before opening the YUV file the software tries to derive important video paramet
 
 * Resolution of the mask file has to be identical as input file.
 * Allowed mask values are `0` (interpreted as inactive pixel) and `(1<<BitDepthM)-1)` (interpreted as active pixel). Behavior for other values is undefined at this moment.
-* The data processing functions for masked mode are not implemented with the use of SIMD instructions.
+* The data processing functions for masked mode are not implemented with the use of SIMD instructions leading to slower computations.
+
+### 5.8. RGB mode - requirements and notes
+
+* The YCbCr input sequence is internally converted to RGB and metric is calculated on RGB pictures.
+* CalcMetricInRGB option is used to enable this mode and ColorSpace option is used to select color space for YCbCr-->RGB conversion [BT601, BT709, BT2020]
+* If RGB mode is enabled, the ColorSpace argument shall be provided.
+* One can consider changing the CmpWeightsSearch and CmpWeightsAverage. Default values of CmpWeights are designed for YCbCr color space and are equal to 4:1:1:0 for Y:Cb:Cr:0 respectively. For operation in RGB color space it is highly recommended to manuały adjust CmpWeights. The exemplary config entry for RGB case is provided as follows: 
+
+```ini
+CalcMetricInRGB   = 1         #enable RGB mode
+ColorSpace        = BT709     #use BT.709 color space for conversion
+CmpWeightsSearch  = "1:1:1:0" #use uniform weights during IV search phase
+CmpWeightsAverage = "1:1:1:0" #use uniform weights during IV averaging phase
+``` 
 
 ## 6. Changelog
 
-### v5.0 [M64727]
+### IV-PSNR v6.0 [M68222]
+
+* yet another general overhaul of entire software structure 
+* ComponentWeights parameter split into two new parameters CmpWeightsSearch and CmpWeightsAverage
+* added option to calculate metric in RGB color space:
+  * the YCbCr input sequence is converted to RGB and metric is calculated on RGB pictures
+  * CalcMetricInRGB option added to enable this mode
+  * ColorSpace option added to select color space for YCbCr-->RGB conversion [BT601, BT709, BT2020]
+* added fast SIMD implementation of Kahan-Babuška-Neumaier accumulation 
+* added "reasonable auto" mode for number of threads selection and set it as default behavior (since using all available threads on 128 core machine was slightly unwise)
+* added possibility to overwrite dynamic dispatcher decision and manuały select code path
+* added weighted PSNR-YCbCr, WSPSNR-YCbCr, PSNR-RGB, and WSPSNR-RGB output
+
+### IV-PSNR v5.0 [M64727]
 
 * general overhaul of entire software structure 
 * new cmake-based build system with simultaneous build of four variants of x86-64 Microarchitecture Feature Level and runtime dynamic dispatch
@@ -214,20 +288,20 @@ Before opening the YUV file the software tries to derive important video paramet
 * more data processing functions implemented using AVX2
 * wider SIMD (AVX512) implementation for some data processing functions 
 
-### v4.0 [M59974]
+### IV-PSNR v4.0 [M59974]
 
 * SIMD (SSE 4.1) implementation of IV-PSNR metric calculation (for interleaved picture buffers)
 * wider SIMD (AVX2) implementation for most data processing functions
 * runtime adjustable component weights for IV-PSNR metric
 * adjustable search range for IV-PSNR metric
-* adjustable unnoticable color difference threshold coeff for IV-PSNR metric
+* adjustable unnoticeable color difference threshold coeff for IV-PSNR metric
 * reading parameters from config file
 * protection against StartFrame >= DetectedFrames
 * writing error messages to stdout and stderr
 * non-performance critical parameters moved from compile-time to run-time selection
 * added mask file option
 
-### v3.0 [M55752]
+### IV-PSNR v3.0 [M55752]
 
 * enabled INTERPROCEDURAL_OPTIMIZATION and assumed x86-64 Microarchitecture Feature Level >= x86-64-v2
 * new implementation picture I/O
@@ -236,11 +310,11 @@ Before opening the YUV file the software tries to derive important video paramet
 * SIMD (SSE 4.1) implementation for most data processing functions
 * dedicated thread pool instead of OpenMP directives (due to high OpenMP overhead)
 
-### v2.1.1 [no reference]
+### IV-PSNR v2.1.1 [no reference]
 
 * bugfix
 
-### v2.1 [M54896]
+### IV-PSNR v2.1 [M54896]
 
 * support for parallel processing (using OpenMP)
 * addition of PSNR and WS-PSNR [Sun17] values outputting
@@ -251,7 +325,7 @@ Before opening the YUV file the software tries to derive important video paramet
     * VERBOSE_LEVEL is now a commandline parameter
     * WSPSNR_PEAK_VALUE_8BIT flag added (default = enabled), when enabled, the signal peak value for WS-PSNR computation is set to `255 << (BitDepth - 8)`. Otherwise, it is equal to `(1<<BitDepth) - 1`
 
-### v2.0 [M54279]
+### IV-PSNR v2.0 [M54279]
 
 * addition of (rOff) and (tOff) commandline parameters
 * removal of redundant GCD calculations
@@ -269,17 +343,18 @@ Before opening the YUV file the software tries to derive important video paramet
 * fixed possibility of reading from unallocated memory region during 5×5 block search
 * fixed GCD values rounding and clipping
 
-### v1.0 [M45093]
+### IV-PSNR v1.0 [M45093]
 
 * first release
-
 
 ## 7. References
 
 * [IVPSNR] A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications)
-* [M64727] J. Stankowski, A. Dziembowski, "Optimized IV-PSNR software with invalid pixel detection", ISO/IEC JTC1/SC29/WG04 MPEG/M64727, October 2023, Hannover, Germany.
-* [M59974] J. Stankowski, A. Dziembowski, "Improved IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG/M59974, July 2021, Online.
-* [M55752] J. Stankowski, A. Dziembowski, "Slightly faster IVPSNR", ISO/IEC JTC1/SC29/WG04 MPEG/M55752, January 2021, Online.
-* [M54896] J. Stankowski, A. Dziembowski, "Even faster implementation of IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG/M54896, October 2020, Online.
+* [IVSOFT] J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)
+* [M68222] J. Stankowski, A. Dziembowski, "The final version of the IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M68222, July 2024, Sapporo, Japan.
+* [M64727] J. Stankowski, A. Dziembowski, "Optimized IV-PSNR software with invalid pixel detection", ISO/IEC JTC1/SC29/WG04 MPEG VC/M64727, October 2023, Hannover, Germany.
+* [M59974] J. Stankowski, A. Dziembowski, "Improved IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M59974, July 2021, Online.
+* [M55752] J. Stankowski, A. Dziembowski, "Slightly faster IVPSNR", ISO/IEC JTC1/SC29/WG04 MPEG VC/M55752, January 2021, Online.
+* [M54896] J. Stankowski, A. Dziembowski, "Even faster implementation of IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M54896, October 2020, Online.
 * [M54279] J. Stankowski, A. Dziembowski, "[MPEG-I Visual] Fast implementation of IV-PSNR software", ISO/IEC JTC1/SC29/WG11 MPEG/M54279, July 2020, Online.
 * [M48093] A. Dziembowski, M. Domański, "[MPEG-I Visual] Objective quality metric for immersive video", ISO/IEC JTC1/SC29/WG11 MPEG/M48093, July 2019, Göteborg, Sweden.

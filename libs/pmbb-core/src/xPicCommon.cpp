@@ -17,6 +17,7 @@ void xPicCommon::xInit(int32V2 Size, int32 BitDepth, int32 Margin, int32 NumCmps
 {
   assert(Size.getX()>0 && Size.getY()>0 && Margin>=0 && NumCmps>0 && NumCmps<=c_MaxNumCmps);
 
+  m_Size     = Size;
   m_Width    = Size.getX();
   m_Height   = Size.getY();
   m_Margin   = Margin;
@@ -32,6 +33,7 @@ void xPicCommon::xInit(int32V2 Size, int32 BitDepth, int32 Margin, int32 NumCmps
 }
 void xPicCommon::xUnInit()
 {
+  m_Size             = {NOT_VALID, NOT_VALID};
   m_Width            = NOT_VALID;
   m_Height           = NOT_VALID;
   m_Margin           = NOT_VALID;

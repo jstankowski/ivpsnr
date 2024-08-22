@@ -36,6 +36,21 @@ std::string xString::replaceAll(const std::string& Source, const std::string& To
   return Result;
 }
 
+std::vector<std::string> xString::split(const std::string& String, const char Delimiter)
+{
+  std::vector<std::string> SubStrings;
+  size_t Beg = 0, End = 0;
+  while((Beg = String.find_first_not_of(Delimiter, End)) != std::string::npos)
+  {
+    End = String.find(Delimiter, Beg);
+    if(End == std::string::npos) { End = String.length(); }
+    std::string_view Unit(String.data() + Beg, End - Beg);
+    std::string_view Striped = stripL(stripR(Unit));
+    SubStrings.push_back(std::string{ Striped });
+  }
+  return SubStrings;
+}
+
 //===============================================================================================================================================================================================================
 
 } //end of namespace PMBB

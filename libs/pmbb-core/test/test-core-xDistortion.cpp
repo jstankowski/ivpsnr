@@ -5,10 +5,8 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
-
 #include <functional>
-
-#include "../src/xCommonDefPMBB-CORE.h"
+#include "../src/xCommonDefCORE.h"
 #include "../src/xDistortion.h"
 #include "../src/xPlane.h"
 #include "../src/xTestUtils.h"
@@ -19,7 +17,7 @@ using namespace PMBB_NAMESPACE;
 
 using tPlane = xPlane<uint16>;
 
-static const std::vector<int32> c_Dimms = { 128, 127, 129, 512, 511, 513, 2048, 2047, 2049 };
+static const std::vector<int32> c_Dimms = { 128, 127, 129, 255, 256, 257, 512, 511, 513 };
 static const std::vector<int32> c_Margs = { 0, 4, 32 };
 static const std::vector<int32> c_Cntrs = { 1, 256, 1024, 4096 };
 static constexpr int32          c_Max   = 16383;
@@ -29,6 +27,8 @@ static constexpr int32          c_Max   = 16383;
 void testDistortion(
   std::function<int32 (const uint16*, const uint16*, int32                     )>AreaSD,
   std::function<int32 (const uint16*, const uint16*, int32, int32, int32, int32)>StrideSD,
+  std::function<uint32(const uint16*, const uint16*, int32                     )>AreaSAD,
+  std::function<uint32(const uint16*, const uint16*, int32, int32, int32, int32)>StrideSAD,
   std::function<uint64(const uint16*, const uint16*, int32                     )>AreaSSD,
   std::function<uint64(const uint16*, const uint16*, int32, int32, int32, int32)>StrideSSD)
 {
@@ -41,7 +41,7 @@ void testDistortion(
 
       for(const int32 m : c_Margs)
       {
-        const std::string Description = fmt::sprintf("Size=%dx%d Margin=%d", x, y, m);
+        const std::string Description = fmt::format("Size={}x{} Margin={}", x, y, m);
         
         //buffers create
         tPlane* PL = new tPlane(Size, 14, m);
@@ -51,7 +51,7 @@ void testDistortion(
         //sets of near constant values
         for(const int32 c : c_Cntrs)
         {
-          CAPTURE(Description + fmt::sprintf(" Center=%d", c));
+          CAPTURE(Description + fmt::format(" Center={}", c));
 
           PL->fill(uint16(c-1));
           PC->fill(uint16(c  ));
@@ -68,6 +68,16 @@ void testDistortion(
             CHECK(AreaSD(PL->getAddr(), PU->getAddr(), PL->getArea()) == -2*Area);
             CHECK(AreaSD(PU->getAddr(), PC->getAddr(), PU->getArea()) ==  Area  );
             CHECK(AreaSD(PC->getAddr(), PU->getAddr(), PC->getArea()) == -Area  );
+
+            CHECK(AreaSAD(PL->getAddr(), PL->getAddr(), PL->getArea()) == 0);
+            CHECK(AreaSAD(PC->getAddr(), PC->getAddr(), PC->getArea()) == 0);
+            CHECK(AreaSAD(PU->getAddr(), PU->getAddr(), PU->getArea()) == 0);
+            CHECK(AreaSAD(PC->getAddr(), PL->getAddr(), PC->getArea()) == Area  );
+            CHECK(AreaSAD(PU->getAddr(), PL->getAddr(), PU->getArea()) == 2*Area);
+            CHECK(AreaSAD(PL->getAddr(), PC->getAddr(), PL->getArea()) == Area  );
+            CHECK(AreaSAD(PL->getAddr(), PU->getAddr(), PL->getArea()) == 2*Area);
+            CHECK(AreaSAD(PU->getAddr(), PC->getAddr(), PU->getArea()) == Area  );
+            CHECK(AreaSAD(PC->getAddr(), PU->getAddr(), PC->getArea()) == Area  );
 
             CHECK(AreaSSD(PL->getAddr(), PL->getAddr(), PL->getArea()) == 0);
             CHECK(AreaSSD(PC->getAddr(), PC->getAddr(), PC->getArea()) == 0);
@@ -90,6 +100,17 @@ void testDistortion(
           CHECK(StrideSD(PU->getAddr(), PC->getAddr(), PU->getStride(), PC->getStride(), PU->getWidth(), PU->getHeight()) ==  Area  );
           CHECK(StrideSD(PC->getAddr(), PU->getAddr(), PC->getStride(), PU->getStride(), PC->getWidth(), PC->getHeight()) == -Area  );
 
+          CHECK(StrideSAD(PL->getAddr(), PL->getAddr(), PL->getStride(), PL->getStride(), PL->getWidth(), PL->getHeight()) == 0);
+          CHECK(StrideSAD(PC->getAddr(), PC->getAddr(), PC->getStride(), PC->getStride(), PC->getWidth(), PC->getHeight()) == 0);
+          CHECK(StrideSAD(PU->getAddr(), PU->getAddr(), PU->getStride(), PU->getStride(), PU->getWidth(), PU->getHeight()) == 0);
+          CHECK(StrideSAD(PC->getAddr(), PL->getAddr(), PC->getStride(), PL->getStride(), PC->getWidth(), PC->getHeight()) == Area  );
+          CHECK(StrideSAD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) == 2*Area);
+          CHECK(StrideSAD(PL->getAddr(), PC->getAddr(), PL->getStride(), PC->getStride(), PL->getWidth(), PL->getHeight()) == Area  );
+          CHECK(StrideSAD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) == 2*Area);
+          CHECK(StrideSAD(PU->getAddr(), PC->getAddr(), PU->getStride(), PC->getStride(), PU->getWidth(), PU->getHeight()) == Area  );
+          CHECK(StrideSAD(PC->getAddr(), PU->getAddr(), PC->getStride(), PU->getStride(), PC->getWidth(), PC->getHeight()) == Area  );
+
+
           CHECK(StrideSSD(PL->getAddr(), PL->getAddr(), PL->getStride(), PL->getStride(), PL->getWidth(), PL->getHeight()) == 0);
           CHECK(StrideSSD(PC->getAddr(), PC->getAddr(), PC->getStride(), PC->getStride(), PC->getWidth(), PC->getHeight()) == 0);
           CHECK(StrideSSD(PU->getAddr(), PU->getAddr(), PU->getStride(), PU->getStride(), PU->getWidth(), PU->getHeight()) == 0);
@@ -104,23 +125,27 @@ void testDistortion(
         }
         
         //extreme constant values
-        CAPTURE(Description + fmt::sprintf(" extreme constant values Max=%d", c_Max));
+        CAPTURE(Description + fmt::format(" extreme constant values Max={}", c_Max));
         PL->fill(    0);
         PU->fill(c_Max);
         if(m == 0)
         {
           if(Area < 131072)
           {
-            CHECK(AreaSD(PL->getAddr(), PU->getAddr(), PL->getArea()) == -c_Max * Area);
-            CHECK(AreaSD(PU->getAddr(), PL->getAddr(), PU->getArea()) ==  c_Max * Area);
+            CHECK(AreaSD (PL->getAddr(), PU->getAddr(), PL->getArea()) == -c_Max * Area);
+            CHECK(AreaSD (PU->getAddr(), PL->getAddr(), PU->getArea()) ==  c_Max * Area);
+            CHECK(AreaSAD(PL->getAddr(), PU->getAddr(), PL->getArea()) ==  c_Max * Area);
+            CHECK(AreaSAD(PU->getAddr(), PL->getAddr(), PU->getArea()) ==  c_Max * Area);
           }
           CHECK(AreaSSD(PL->getAddr(), PU->getAddr(), PL->getArea()) == xPow2<int64>(c_Max) * Area);
           CHECK(AreaSSD(PU->getAddr(), PL->getAddr(), PU->getArea()) == xPow2<int64>(c_Max) * Area);
         }
         if(Area < 131072)
         {
-          CHECK(StrideSD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) == -c_Max * Area);
-          CHECK(StrideSD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  c_Max * Area);
+          CHECK(StrideSD (PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) == -c_Max * Area);
+          CHECK(StrideSD (PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  c_Max * Area);
+          CHECK(StrideSAD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) ==  c_Max * Area);
+          CHECK(StrideSAD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  c_Max * Area);
         }
         CHECK(StrideSSD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) == xPow2<int64>(c_Max) * Area);
         CHECK(StrideSSD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) == xPow2<int64>(c_Max) * Area);
@@ -135,11 +160,15 @@ void testDistortion(
         {
           CHECK(AreaSD (PL->getAddr(), PU->getAddr(), PL->getArea()) == -Area);
           CHECK(AreaSD (PU->getAddr(), PL->getAddr(), PU->getArea()) ==  Area);
+          CHECK(AreaSAD(PL->getAddr(), PU->getAddr(), PL->getArea()) ==  Area);
+          CHECK(AreaSAD(PU->getAddr(), PL->getAddr(), PU->getArea()) ==  Area);
           CHECK(AreaSSD(PL->getAddr(), PU->getAddr(), PL->getArea()) ==  Area);
           CHECK(AreaSSD(PU->getAddr(), PL->getAddr(), PU->getArea()) ==  Area);
         }
         CHECK(StrideSD (PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) == -Area);
         CHECK(StrideSD (PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  Area);
+        CHECK(StrideSAD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) ==  Area);
+        CHECK(StrideSAD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  Area);
         CHECK(StrideSSD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) ==  Area);
         CHECK(StrideSSD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  Area);
 
@@ -153,11 +182,15 @@ void testDistortion(
         {
           CHECK(AreaSD (PL->getAddr(), PU->getAddr(), PL->getArea()) == -Area);
           CHECK(AreaSD (PU->getAddr(), PL->getAddr(), PU->getArea()) ==  Area);
+          CHECK(AreaSAD(PL->getAddr(), PU->getAddr(), PL->getArea()) ==  Area);
+          CHECK(AreaSAD(PU->getAddr(), PL->getAddr(), PU->getArea()) ==  Area);
           CHECK(AreaSSD(PL->getAddr(), PU->getAddr(), PL->getArea()) ==  Area);
           CHECK(AreaSSD(PU->getAddr(), PL->getAddr(), PU->getArea()) ==  Area);
         }
         CHECK(StrideSD (PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) == -Area);
         CHECK(StrideSD (PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  Area);
+        CHECK(StrideSAD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) ==  Area);
+        CHECK(StrideSAD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  Area);
         CHECK(StrideSSD(PL->getAddr(), PU->getAddr(), PL->getStride(), PU->getStride(), PL->getWidth(), PL->getHeight()) ==  Area);
         CHECK(StrideSSD(PU->getAddr(), PL->getAddr(), PU->getStride(), PL->getStride(), PU->getWidth(), PU->getHeight()) ==  Area);
 
@@ -182,10 +215,12 @@ TEST_CASE("xDistortionSTD")
   (
     static_cast<int32 (*)(const uint16*, const uint16*, int32                     )>(&xDistortionSTD::CalcSD ),
     static_cast<int32 (*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionSTD::CalcSD ),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32                     )>(&xDistortionSTD::CalcSAD),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionSTD::CalcSAD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32                     )>(&xDistortionSTD::CalcSSD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionSTD::CalcSSD)
   );
-  fmt::printf("TIME(xDistortionSTD   ) = %fs\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  fmt::print("TIME(xDistortionSTD   ) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
 }
 
 #if X_SIMD_CAN_USE_SSE
@@ -196,10 +231,12 @@ TEST_CASE("xDistortionSSE")
   (
     static_cast<int32 (*)(const uint16*, const uint16*, int32                     )>(&xDistortionSSE::CalcSD ),
     static_cast<int32 (*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionSSE::CalcSD ),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32                     )>(&xDistortionSSE::CalcSAD),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionSSE::CalcSAD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32                     )>(&xDistortionSSE::CalcSSD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionSSE::CalcSSD)
   );
-  fmt::printf("TIME(xDistortionSSE   ) = %fs\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  fmt::print("TIME(xDistortionSSE   ) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
 }
 #endif
 
@@ -211,10 +248,12 @@ TEST_CASE("xDistortionAVX")
   (
     static_cast<int32 (*)(const uint16*, const uint16*, int32                     )>(&xDistortionAVX::CalcSD ),
     static_cast<int32 (*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionAVX::CalcSD ),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32                     )>(&xDistortionAVX::CalcSAD),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionAVX::CalcSAD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32                     )>(&xDistortionAVX::CalcSSD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionAVX::CalcSSD)
   );
-  fmt::printf("TIME(xDistortionAVX   ) = %fs\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  fmt::print("TIME(xDistortionAVX   ) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
 }
 #endif
 
@@ -226,9 +265,11 @@ TEST_CASE("xDistortionAVX512")
   (
     static_cast<int32 (*)(const uint16*, const uint16*, int32                     )>(&xDistortionAVX512::CalcSD ),
     static_cast<int32 (*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionAVX512::CalcSD ),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32                     )>(&xDistortionAVX512::CalcSAD),
+    static_cast<uint32(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionAVX512::CalcSAD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32                     )>(&xDistortionAVX512::CalcSSD),
     static_cast<uint64(*)(const uint16*, const uint16*, int32, int32, int32, int32)>(&xDistortionAVX512::CalcSSD)
   );
-  fmt::printf("TIME(xDistortionAVX512) = %fs\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  fmt::print("TIME(xDistortionAVX512) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
 }
 #endif

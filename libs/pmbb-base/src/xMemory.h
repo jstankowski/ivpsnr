@@ -47,13 +47,16 @@ public:
 
 public:
   //Allocation with explicit alignment
-#if defined(X_COMPILER_MSVC)
+#if defined(X_PMBB_COMPILER_MSVC)
   static inline void* xAlignedMalloc(uintSize Size, uintSize Alignment) { return _aligned_malloc(Size, Alignment); }
   static inline void  xAlignedFree  (void* Memmory) { _aligned_free(Memmory); }
 #else
   static inline void* xAlignedMalloc(uintSize Size, uintSize Alignment) { return aligned_alloc(Alignment, Size); }
   static inline void  xAlignedFree  (void* Memmory) { free(Memmory); }
 #endif
+  //static inline void  xAlignedFreeNull(void*& Memmory) { xAlignedFree(Memmory); Memmory = nullptr; }
+  template <class XXX> static inline void xAlignedFreeNull(XXX*& Memmory) { xAlignedFree(Memmory); Memmory = nullptr; }
+
 
   static void* xAlignedMallocCacheLine(uintSize Size);
   static void* xAlignedMallocPageBase (uintSize Size);
@@ -62,6 +65,7 @@ public:
   static void* xAlignedMallocAuto     (uintSize Size);
 
   static void* AlignedMalloc         (uintSize Size, eMemAlignment Alignment = eMemAlignment::Auto);
+
 
 protected:
   static uint64 xLog2(uint64 Val) { return (Val > 1) ? 1 + xLog2(Val >> 1) : 0; } //positive integer only

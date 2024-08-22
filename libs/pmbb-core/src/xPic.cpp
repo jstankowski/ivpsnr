@@ -4,8 +4,8 @@
 */
 
 #include "xPic.h"
-#include "xPixelOps.h"
 #include "xMemory.h"
+#include "xPixelOps.h"
 #include <cassert>
 #include <cstring>
 
@@ -29,7 +29,7 @@ void xPicP::create(int32V2 Size, int32 BitDepth, int32 Margin)
 }
 void xPicP::destroy()
 {
-  for(int32 c = 0; c < m_NumCmps; c++)
+  for(int32 c = 0; c < c_MaxNumCmps; c++)
   {
     if(m_Buffer[c] != nullptr) { xMemory::xAlignedFree(m_Buffer[c]); m_Buffer[c] = nullptr; }
     m_Origin[c] = nullptr;
@@ -59,20 +59,21 @@ void xPicP::fill(uint16 Value, eCmp CmpId)
   xPixelOps::Fill(m_Buffer[(int32)CmpId], Value, m_BuffCmpNumPels);
   m_IsMarginExtended = true;
 }
-bool xPicP::check(const std::string& Name)
+bool xPicP::check(const std::string& Name) const
 {
   boolV4 Correct = xMakeVec4(true);
-  for(int32 CmpIdx = 0; CmpIdx < m_NumCmps; CmpIdx++)
+  for(int32 c = 0; c < m_NumCmps; c++)
   { 
-    Correct[CmpIdx] = xPixelOps::CheckValues(m_Origin[CmpIdx], m_Stride, m_Width, m_Height, m_BitDepth);
+    Correct[c] = xPixelOps::CheckIfInRange(m_Origin[c], m_Stride, m_Width, m_Height, m_BitDepth);
   }
 
-  for(int32 CmpIdx = 0; CmpIdx < m_NumCmps; CmpIdx++)
+  for(int32 c = 0; c < m_NumCmps; c++)
   {
-    if(!Correct[CmpIdx])
+    if(!Correct[c])
     {
-      fmt::printf("FILE BROKEN " + Name + " (CMP=%d)\n", CmpIdx);
-      xPixelOps::FindBroken(m_Origin[CmpIdx], m_Stride, m_Width, m_Height, m_BitDepth);
+      fmt::print("FILE BROKEN " + Name + " (CMP={:d})\n", c);
+      std::string Msg = xPixelOps::FindOutOfRange(m_Origin[c], m_Stride, m_Width, m_Height, m_BitDepth, -1);
+      fmt::print(Msg);
       return false;
     }
   }
@@ -81,16 +82,35 @@ bool xPicP::check(const std::string& Name)
 }
 void xPicP::conceal()
 {
-  for(int32 CmpIdx = 0; CmpIdx < m_NumCmps; CmpIdx++)
+  for(int32 c = 0; c < m_NumCmps; c++)
   {
-    xPixelOps::ConcealBroken(m_Origin[CmpIdx], m_Stride, m_Width, m_Height, m_BitDepth);
+    xPixelOps::ClipToRange(m_Origin[c], m_Stride, m_Width, m_Height, m_BitDepth);
   }
   m_IsMarginExtended = false;
 }
 void xPicP::extend()
 {
-  for(int32 CmpIdx = 0; CmpIdx < m_NumCmps; CmpIdx++) { xPixelOps::ExtendMargin(m_Origin[CmpIdx], m_Stride, m_Width, m_Height, m_Margin); }
+  for(int32 c = 0; c < m_NumCmps; c++) { xPixelOps::ExtendMargin(m_Origin[c], m_Stride, m_Width, m_Height, m_Margin); }
   m_IsMarginExtended = true;
+}
+
+bool xPicP::equalPic(const xPicP* Src) const
+{
+  assert(Src != nullptr && isCompatible(Src));
+  for(int32 c = 0; c < m_NumCmps; c++) { if(!equalCmp(Src, (eCmp)c)) { return false; } }
+  return true;
+}
+bool xPicP::equalCmp(const xPicP* Src, eCmp CmpId) const
+{
+  assert(Src != nullptr && isCompatible(Src));
+  return xPixelOps::CompareEqual(Src->getAddr(CmpId), m_Origin[(int32)CmpId], Src->getStride(), m_Stride, m_Width, m_Height);
+}
+boolV4 xPicP::equalCmps(const xPicP* Src) const
+{
+  assert(Src != nullptr && isCompatible(Src));
+  boolV4 Result = xMakeVec4<bool>(true);
+  for(int32 c = 0; c < m_NumCmps; c++) { Result[c] = equalCmp(Src, (eCmp)c); }
+  return Result;
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -135,7 +155,13 @@ bool xPicP::swapBuffers(xPicP* TheOther)
   }
   return true;
 }
-
+bool xPicP::swapComponents(eCmp CmpIdA, eCmp CmpIdB)
+{
+  if(m_Buffer[(int32)CmpIdA] == nullptr || m_Buffer[(int32)CmpIdB] == nullptr) { return false; }
+  std::swap(m_Buffer[(int32)CmpIdA], m_Buffer[(int32)CmpIdB]);
+  std::swap(m_Origin[(int32)CmpIdA], m_Origin[(int32)CmpIdB]);
+  return true;
+}
 
 //===============================================================================================================================================================================================================
 // xPicI

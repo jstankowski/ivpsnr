@@ -5,19 +5,19 @@
 
 #include "xMemory.h"
 
-#ifdef X_SYSTEM_WINDOWS
+#ifdef X_PMBB_OPERATING_SYSTEM_WINDOWS
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
   #undef WIN32_LEAN_AND_MEAN
-#endif //X_SYSTEM_WINDOWS
+#endif //X_PMBB_OPERATING_SYSTEM_WINDOWS
 
-#ifdef X_SYSTEM_LINUX
+#ifdef X_PMBB_OPERATING_SYSTEM_LINUX
   #if __has_include(<unistd.h>)
-    #define X_SYSTEM_UNISTD 1
+    #define X_PMBB_SYSTEM_UNISTD 1
     #include <unistd.h>
   #endif
   #include <dirent.h>
-#endif //X_SYSTEM_LINUX
+#endif //X_PMBB_OPERATING_SYSTEM_LINUX
 
 
 //=============================================================================================================================================================================
@@ -30,7 +30,7 @@ int32_t xDetectCacheLineSize()
 {
   int32_t CacheLineSize = NOT_VALID;
 
-#ifdef X_SYSTEM_WINDOWS
+#ifdef X_PMBB_OPERATING_SYSTEM_WINDOWS
   DWORD bufferSize = 0;
   SYSTEM_LOGICAL_PROCESSOR_INFORMATION* buffer = 0;
 
@@ -49,9 +49,9 @@ int32_t xDetectCacheLineSize()
   }
   free(buffer);
   CacheLineSize = LineSize;
-#endif //X_SYSTEM_WINDOWS
+#endif //X_PMBB_OPERATING_SYSTEM_WINDOWS
 
-#ifdef X_SYSTEM_LINUX
+#ifdef X_PMBB_OPERATING_SYSTEM_LINUX
   FILE* File = 0;
   File = fopen("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size", "r");
   int LineSize = 0;
@@ -62,7 +62,7 @@ int32_t xDetectCacheLineSize()
     if(Result != 1) { return 0; }
   }
   CacheLineSize = LineSize;
-#endif //X_SYSTEM_LINUX
+#endif //X_PMBB_OPERATING_SYSTEM_LINUX
 
   return CacheLineSize;
 }
@@ -71,15 +71,15 @@ int64_t xDetectMemoryPageSize()
 {
   int64_t PageSize = NOT_VALID;
 
-#ifdef X_SYSTEM_WINDOWS
+#ifdef X_PMBB_OPERATING_SYSTEM_WINDOWS
   SYSTEM_INFO SysInfo;
   GetSystemInfo(&SysInfo);
   PageSize = SysInfo.dwPageSize;
-#endif //X_SYSTEM_WINDOWS
+#endif //X_PMBB_OPERATING_SYSTEM_WINDOWS
 
-#ifdef X_SYSTEM_LINUX
+#ifdef X_PMBB_OPERATING_SYSTEM_LINUX
   PageSize = sysconf(_SC_PAGE_SIZE);
-#endif //X_SYSTEM_LINUX
+#endif //X_PMBB_OPERATING_SYSTEM_LINUX
 
   return PageSize;
 }
@@ -88,12 +88,12 @@ int64_t xDetectMemoryHugePageSize()
 {
   int64_t PageSize = NOT_VALID;
 
-#if X_SYSTEM_WINDOWS
+#if X_PMBB_OPERATING_SYSTEM_WINDOWS
   size_t LargePageMinimum = (int64_t)GetLargePageMinimum();
   PageSize = LargePageMinimum !=0 ? (int64_t)LargePageMinimum : NOT_VALID;
-#endif //X_SYSTEM_WINDOWS
+#endif //X_PMBB_OPERATING_SYSTEM_WINDOWS
   
-#ifdef X_SYSTEM_LINUX
+#ifdef X_PMBB_OPERATING_SYSTEM_LINUX
   uint64_t MinPageSize = std::numeric_limits<uint64_t>::max();
 
   DIR* dirp = opendir("/sys/kernel/mm/hugepages");
@@ -111,7 +111,7 @@ int64_t xDetectMemoryHugePageSize()
   }
   closedir(dirp);
   PageSize = MinPageSize != std::numeric_limits<uint64_t>::max() ? (int64_t)MinPageSize : NOT_VALID;
-#endif //X_SYSTEM_LINUX
+#endif //X_PMBB_OPERATING_SYSTEM_LINUX
 
   return PageSize;
 }

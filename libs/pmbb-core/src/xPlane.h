@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-CORE.h"
+#include "xCommonDefCORE.h"
 #include "xPicCommon.h"
+#include "xMemory.h"
 #include <type_traits>
 
 namespace PMBB_NAMESPACE {
@@ -37,8 +38,11 @@ public:
   void   clear  ();
   void   copy   (const xPlane* Src);
   void   fill   (PelType Value);
-  bool   check  (const std::string& Name);
-  void   extend ();                                   
+  bool   check  (const std::string& Name) const;  
+  void   conceal(                       );
+  void   extend (                       );
+
+  bool   equal  (const xPlane* Ref, bool PrintFirstDiscrepancy) const;
                                    
   //data type/range helpers       
   PelType getMaxPelValue() const { if constexpr (std::is_integral_v<PelType>) { return (PelType)xBitDepth2MaxValue(m_BitDepth);} else { return (PelType)1.0; } }

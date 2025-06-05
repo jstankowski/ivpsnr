@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -446,22 +446,6 @@ void xCfgINI::printCommandlineArgs(int argc, const char* argv[])
   for(int32 i=0; i<argc; i++) { CommandlineArgs += fmt::sprintf("argv[%02d] = %s\n", i, argv[i]); }
   CommandlineArgs += fmt::sprintf("\n");
   fmt::print("{}", CommandlineArgs);
-}
-void xCfgINI::printError(tCSR ErrorMessage, tCSR HelpString)
-{
-  fmt::fprintf(stdout, ErrorMessage + "\n");
-  fmt::fprintf(stderr, ErrorMessage + "\n");
-  if(!HelpString.empty()) { fmt::fprintf(stdout, HelpString + "\n"); }
-  std::fflush(stdout);
-  std::fflush(stderr);
-}
-void xCfgINI::printError(tCSR ErrorMessage, tCSV& HelpString)
-{
-  fmt::fprintf(stdout, ErrorMessage + "\n");
-  fmt::fprintf(stderr, ErrorMessage + "\n");
-  if(!HelpString.empty()) { fmt::fprintf(stdout, "%s\n", HelpString); }
-  std::fflush(stdout);
-  std::fflush(stderr);
 }
 
 //===============================================================================================================================================================================================================

@@ -26,17 +26,17 @@ int32V4 xGlobClrDiff::CalcGlobalColorDiff(const xPicP* Tst, const xPicP* Ref, co
   {
     for(int32 CmpIdx = 0; CmpIdx < NumCmps; CmpIdx++)
     {
-      TPI->addWaitingTask([&SumColorDiff, &Tst, &Ref, CmpIdx](int32 /*ThreadIdx*/)
-        { SumColorDiff[CmpIdx] = xDistortion::CalcSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Tst->getStride(), Ref->getStride(), Ref->getWidth(), Ref->getHeight()); }
+      TPI->storeTask([&SumColorDiff, &Tst, &Ref, CmpIdx](int32 /*ThreadIdx*/)
+        { SumColorDiff[CmpIdx] = xDistortion::CalcSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Tst->getStride(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), Ref->getBitDepth()); }
       );
     }
-    TPI->waitUntilTasksFinished(NumCmps);
+    TPI->executeStoredTasks();
   }
   else
   {
     for(int32 CmpIdx = 0; CmpIdx < NumCmps; CmpIdx++)
     {
-      SumColorDiff[CmpIdx] = xDistortion::CalcSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Tst->getStride(), Ref->getStride(), Ref->getWidth(), Ref->getHeight());
+      SumColorDiff[CmpIdx] = xDistortion::CalcSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Tst->getStride(), Ref->getStride(), Ref->getWidth(), Ref->getHeight(), Ref->getBitDepth());
     }
   }
 
@@ -61,11 +61,11 @@ int32V4 xGlobClrDiff::CalcGlobalColorDiffM(const xPicP* Tst, const xPicP* Ref, c
   {
     for(int32 CmpIdx = 0; CmpIdx < NumCmps; CmpIdx++)
     {
-      TPI->addWaitingTask([&SumColorDiff, &Tst, &Ref, &Msk, CmpIdx](int32 /*ThreadIdx*/)
+      TPI->storeTask([&SumColorDiff, &Tst, &Ref, &Msk, CmpIdx](int32 /*ThreadIdx*/)
         { SumColorDiff[CmpIdx] = xDistortion::CalcWeightedSD(Tst->getAddr((eCmp)CmpIdx), Ref->getAddr((eCmp)CmpIdx), Msk->getAddr(eCmp::LM), Tst->getStride(), Ref->getStride(), Msk->getStride(), Ref->getWidth(), Ref->getHeight()); }
       );
     }
-    TPI->waitUntilTasksFinished(NumCmps);
+    TPI->executeStoredTasks();
   }
   else
   {

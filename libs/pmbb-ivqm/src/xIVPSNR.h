@@ -7,6 +7,7 @@
 #pragma once
 #include "xWSPSNR.h"
 #include "xGlobClrDiff.h"
+#include "xCorrespPixelShiftPrms.h"
 #include "xCorrespPixelShift.h"
 
 namespace PMBB_NAMESPACE {
@@ -37,6 +38,9 @@ public:
 protected:  
   flt64 xCalcQualAsymmetricPic(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff); //asymetric Q planar
   flt64 xCalcQualAsymmetricPic(const xPicI* Tst, const xPicI* Ref, const int32V4& GlobalColorDiff); //asymetric Q interleaved
+
+  void  xCalcQualAsymmetricRng(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY); //asymetric Q interleaved
+  void  xCalcQualAsymmetricRng(const xPicI* Tst, const xPicI* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY); //asymetric Q interleaved
 };
 
 //===============================================================================================================================================================================================================
@@ -52,6 +56,7 @@ protected:
 
   //asymetric Q interleaved
   flt64 xCalcQualAsymmetricPicM(const xPicI* Tst, const xPicI* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, const int32 NumNonMasked);
+  void  xCalcQualAsymmetricRngM(const xPicI* Tst, const xPicI* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY);
 };
 
 //===============================================================================================================================================================================================================

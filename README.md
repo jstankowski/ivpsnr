@@ -5,14 +5,15 @@
 The software calculates number of quality metrics, especially related to assessment of immersive video quality.
 
 The list of immersive video quality metrics includes: 
-  * IV-PSNR   - Immersive Video - Peak Signal-to-Noise Ratio
-  * IV-SSIM   - Immersive Video - Structural Similarity Index Measure
+  * IV-PSNR    - Immersive Video - Peak Signal-to-Noise Ratio
+  * IV-SSIM    - Immersive Video - Structural Similarity Index Measure
+  * IV-MS-SSIM - Immersive Video - Multi Scale Structural Similarity Index Measure
 
 In addition the software is able to calculate following "general purpose" metrics:
-  * PSNR      - Peak Signal-to-Noise Ratio
-  * WS-PSNR   - Spherical Weighted - Peak Signal-to-Noise Ratio
-  * SSIM      - Structural Similarity Index Measure
-  * MS-SSIM   - Multi Scale Structural Similarity Index Measure
+  * PSNR    - Peak Signal-to-Noise Ratio
+  * WS-PSNR - Spherical Weighted - Peak Signal-to-Noise Ratio
+  * SSIM    - Structural Similarity Index Measure
+  * MS-SSIM - Multi Scale Structural Similarity Index Measure
 
 The idea behind the IV-PSNR mertric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
 **A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**  
@@ -30,11 +31,11 @@ The IV-PSNR software and its architecture is described in following paper [IVSOF
 
 ## 3. License
 
-## 3.1. TLDR
+### 3.1. TLDR
 
 3-Clause BSD License
 
-## 3.2. Full text
+### 3.2. Full text
 
 ```txt
 The copyright in this software is being made available under the BSD
@@ -42,7 +43,7 @@ License, included below. This software may be subject to other third party
 and contributor rights, including patent rights, and no such rights are
 granted under this license.
 
-Copyright (c) 2019-2024, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
+Copyright (c) 2019-2025, Jakub Stankowski & Adrian Dziembowski, All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -71,7 +72,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ## 4. Building 
 
-Building the IV-PSNR software requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 8.0, clang >= 5.0, MSVC >= 19.15).
+Building the QMIV framework requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 10.0, clang >= 13.0, MSVC >= 19.15). 
 
 The IV-PSNR application and its build system is designed to create fastest possible binary. On x86-64 microarchitectures the build system can create four version of compiled application, each optimized for one predefined x86-64 Microarchitecture Feature Levels [x86-64, x86-64-v2, x86-64-v3, x86-64-v4] (defined in https://gitlab.com/x86-psABIs/x86-64-ABI). The final binary consists of this four optimized variants and a runtime dynamic dispatcher. The dispatcher uses CPUID instruction to detect available instruction set extensions and selects the fastest possible code path. 
 
@@ -126,7 +127,7 @@ Commandline parameters are parsed from left to right. Multiple config files are 
 |-s1  | StartFrame1      | Start frame 1 (optional, default=0) |
 |-nf  | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
 |-r   | ResultFile       | Output file path for printing result(s) (optional) |
-|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, MSSSIM, IVSSIM] (optional, default="PSNR, IVPSNR, IVSSIM") |
+|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, MSSSIM, IVSSIM, IVMSSSIM] (optional, default="PSNR, WSPSNR, IVPSNR, IVSSIM") |
 
 PictureSize parameter can be used interchangeably with PictureWidth, PictureHeight pair. If PictureSize parameter is present the PictureWidth and PictureHeight arguments are ignored.
 PictureFormat parameter can be used interchangeably with BitDepth, ChromaFormat pair. If PictureFormat parameter is present the BitDepth and, ChromaFormat arguments are ignored.
@@ -165,6 +166,13 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 |-cwa | CmpWeightsAverage| IV-metric component weights used during averaging ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory) |
 |-unc | UnnoticeableCoef | IV-metric unnoticeable color difference threshold coeff ("Lm:Cb:Cr:0" or "R:G:B:0" - per component coeff, default="0.01:0.01:0.01:0", quotes are mandatory) |
 
+#### Structural similarity specific parameters
+| Cmd | ParamName        | Description |
+|:----|:-----------------|:------------|
+|-ssm | StructSimMode    | Calculation mode and structure variant (optional, default=BlockAveraged) [RegularGaussianFlt, RegularGaussianInt, RegularAveraged, BlockGaussianInt, BlockAveraged] |
+|-sss | StructSimStride  | Stride between pixels/windows (optional, default=4) |
+|-ssw | StructSimWindow  | Size of structure window (optional, applies to Block modes only, default=8) [8,16,32] |
+
 #### Validation parameters
 
 | Cmd | ParamName        | Description |
@@ -177,7 +185,6 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 | Cmd | ParamName        | Description |
 |:----|:-----------------|:------------|
 |-nth | NumberOfThreads  | Number of worker threads (optional, default=-2, suggested ~8 for IVPSNR, all physical cores for SSIM) [0 = thread pool disabled, -1 = all available threads, -2 = reasonable auto]
-|-ilp | InterleavedPic   | Use additional image buffer with interleaved layout for IV-PSNR, (improves performance at a cost of increased memory usage, optional, default=1) |
 |-v   | VerboseLevel     | Verbose level (optional, default=1) |
 
 #### External config file
@@ -187,10 +194,10 @@ If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion 
 | -c  | n/a              | Valid path to external config file - in INI format (optional). Multiple config files can be provided by using multiple "-c" arguments. Config files are processed in arguments order. Content of config files are merged while repeating values are overwritten. |
 
 #### Dynamic dispatcher parameters
-| Cmd                | Description |
-|:-------------------|:------------|
-| --DispatchForceMFL | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]. Forcing a selection of microarchitecture level not supported by CPU will lead to "illegal instruction" exception.
-| --DispatchVerbose  | Verbose level for runtime dispatch module (optional, default=0) |
+| Cmd               | Description |
+|:------------------|:------------|
+| --DispatchForce   | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]. Forcing a selection of microarchitecture level not supported by CPU will lead to "illegal instruction" exception.
+| --DispatchVerbose | Verbose level for runtime dispatch module (optional, default=0) |
 
 ### 5.2. Verbose level
 
@@ -278,7 +285,6 @@ CmpWeightsAverage = "4:1:1:0"
 #UnnoticeableCoef = "0:0:0:0"
 
 NumberOfThreads   = 12
-InterleavedPic    = 1
 VerboseLevel      = 3
 ```
 
@@ -336,8 +342,30 @@ Examples:
 * The list of files {img001.png, img002.png, img003.png} should be specified as `img{:03d}.png`. 
 * The list of files {img000.png, img001.png, img002.png, img004.png}, specified as `img{:03d}.png`, will be processed for 0,1, and 2 indexes only. The `img002.png` will be detected as the last image in list.
 
-
 ## 6. Changelog
+
+### IV-PSNR v8.0
+
+* added calculation of IV-MS-SSIM (Immersive Video - Multi Scale SSIM)
+* added several variants of SSIM-related metrics calculation:
+  * Structural similarity mode - allows to change mode and windowing approach:
+    * RegularGaussianFlt, RegularGaussianInt, RegularAveraged - regular 11x11 mode
+    * BlockGaussianInt, BlockAveraged - block-based mode
+    * two implementations of Gaussian window (floating point based and integer based with quantized Gaussian filter coefficients) or simplified averaging window
+  * Structural similarity stride - allows to calculate SSIM-related metrics every N pixels
+  * Structural similarity window size - allows to provide window size for block mode SSIM
+* added new parameters: StructSimMode, StructSimStride, StructSimWindow
+* switching default approach for SSIM-related metrics form (Mode=RegularGaussianFlt,Stride=1 - as defined by authors of SSIM metric) to (Mode=BlockAveraged,Stride=1,Window=8 - similar to approach used by FFMPEG) - this change reduces computational complexity while increasing correlation with MOS
+* faster calculation of SSIM-based metrics by algorithmic optimization and wider SIMD coverage
+  * fast SIMD (SSE4.1, AVX2, and AVX512) implementation for BlockAveraged SSIM mode
+* fixed calculation of MS-SSIM metric(s) for small pictures - avoid scaling below 32x32px
+* better performance for high core count CPUs
+  * reduced multi-threading overhead by switching to new thread pool API
+  * task batching for per-row operations
+  * reduced thread pool overhead
+* overhauled build system and simplified cmake files
+* improved test coverage
+* several small performance improvements & minor bugfixes
 
 ### IV-PSNR v7.1
 
@@ -359,10 +387,10 @@ Examples:
   * reduced overhead of computing time measurement (switched from `std::chrono::high_resolution_clock` to `RDTSCP`)
   * increased precision of printed metric values
 * overhaul of IVPSNR v6.0 RGB mode into generic colorspace mode, including:
-  * consistent metric suffixes,
-  * RGB to YCbCr and YCbCr to RGB conversion,
-  * RGB passthrough mode,
-  * CalcMetricInRGB and ColorSpace arguments replaced by more general set of arguments (ColorSpaceInput, ColorSpaceMetric),
+  * consistent metric suffixes
+  * RGB to YCbCr and YCbCr to RGB conversion
+  * RGB passthrough mode
+  * CalcMetricInRGB and ColorSpace arguments replaced by more general set of arguments (ColorSpaceInput, ColorSpaceMetric)
 * input defined as PNG file or list of PNG files.
 
 ### IV-PSNR v6.0 [M68222]

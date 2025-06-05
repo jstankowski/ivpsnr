@@ -14,7 +14,7 @@ namespace PMBB_NAMESPACE {
 void xPixelOpsAVX512::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
   const __m512i PermCtlV = _mm512_setr_epi64(0, 4, 1, 5, 2, 6, 3, 7);
-  if(((uint32)Width & c_RemainderMask64) == 0) //Width%64==0
+  if(((uint32)Width & c_RemainderMask64<uint32>) == 0) //Width%64==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -33,8 +33,8 @@ void xPixelOpsAVX512::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStrid
   }
   else
   {
-    const int32  Width64     = (int32)((uint32)Width & c_MultipleMask64);
-    const uint64 Remainder64 = (uint32)Width & c_RemainderMask64;
+    const int32  Width64     = (int32)((uint32)Width & c_MultipleMask64<uint32>);
+    const uint64 Remainder64 = (uint32)Width & c_RemainderMask64<uint32>;
     const uint64 MaskL       = ((uint64)1 << Remainder64) - 1;
     const uint32 MaskS1      = (uint32)(MaskL & 0xFFFFFFFF);
     const uint32 MaskS2      = (uint32)(MaskL>>32);      
@@ -64,7 +64,7 @@ void xPixelOpsAVX512::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStrid
 void xPixelOpsAVX512::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
   const __m512i PermCtlV = _mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7);
-  if(((uint32)Width & c_RemainderMask64) == 0) //Width%64==0
+  if(((uint32)Width & c_RemainderMask64<uint32>) == 0) //Width%64==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -82,7 +82,7 @@ void xPixelOpsAVX512::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStrid
   }
   else
   {
-    const int32 Width64 = (int32)((uint32)Width & c_MultipleMask64);
+    const int32 Width64 = (int32)((uint32)Width & c_MultipleMask64<uint32>);
     for(int32 y = 0; y < Height; y++)
     {
       for(int32 x = 0; x < Width64; x += 64)
@@ -93,7 +93,7 @@ void xPixelOpsAVX512::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStrid
         __m512i DstV  = _mm512_permutexvar_epi64(PermCtlV, DstVt); //fix AVX per lane mess
         _mm512_storeu_si512((__m512i*)(&(Dst[x])), DstV);
       } //x
-      const uint64 Remainder64 = (uint32)Width & c_RemainderMask64;
+      const uint64 Remainder64 = (uint32)Width & c_RemainderMask64<uint32>;
       const uint64 Mask        = ((uint64)1 << Remainder64) - 1;
       const uint32 Mask1       = (uint32)(Mask & 0xFFFFFFFF);
       const uint32 Mask2       = (uint32)(Mask>>32);      
@@ -113,7 +113,7 @@ void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;  
 
-  if(((uint32)DstWidth & c_RemainderMask64)==0) //Width%64==0
+  if(((uint32)DstWidth & c_RemainderMask64<uint32>)==0) //Width%64==0
   {
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -135,10 +135,10 @@ void xPixelOpsAVX512::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 
   }
   else
   {
-    const int32  Width64     = (int32)((uint32)DstWidth & c_MultipleMask64);
-    const uint32 Remainder32 = (uint32)(DstWidth>>1) & c_RemainderMask32;
+    const int32  Width64     = (int32)((uint32)DstWidth & c_MultipleMask64<uint32>);
+    const uint32 Remainder32 = (uint32)(DstWidth>>1) & c_RemainderMask32<uint32>;
     const uint32 MaskL       = ((uint32)1 << Remainder32) - 1;
-    const uint64 Remainder64 = (uint32)DstWidth & c_RemainderMask64;
+    const uint64 Remainder64 = (uint32)DstWidth & c_RemainderMask64<uint32>;
     const uint64 MaskS       = ((uint64)1 << Remainder64) - 1;
     const uint32 MaskS1      = (uint32)(MaskS & 0xFFFFFFFF);
     const uint32 MaskS2      = (uint32)(MaskS >>32);
@@ -178,7 +178,7 @@ void xPixelOpsAVX512::DownsampleHV(uint16* restrict Dst, const uint16* Src, int3
   const uint16* SrcL0     = Src;
   const uint16* SrcL1     = Src + SrcStride;
 
-  if(((uint32)DstWidth & (uint32)c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)DstWidth & (uint32)c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -205,11 +205,11 @@ void xPixelOpsAVX512::DownsampleHV(uint16* restrict Dst, const uint16* Src, int3
   else
   {
     const int32  SrcWidth    = (DstWidth << 1);
-    const int32  Width32     = (int32)((uint32)DstWidth & c_MultipleMask32);
-    const int32  Width64     = (int32)((uint32)SrcWidth & c_MultipleMask64);
-    const uint32 Remainder32 = (uint32)DstWidth & c_RemainderMask32;
+    const int32  Width32     = (int32)((uint32)DstWidth & c_MultipleMask32<uint32>);
+    const int32  Width64     = (int32)((uint32)SrcWidth & c_MultipleMask64<uint32>);
+    const uint32 Remainder32 = (uint32)DstWidth & c_RemainderMask32<uint32>;
     const uint32 MaskS       = ((uint32)1 << Remainder32) - 1;
-    const uint64 Remainder64 = (uint32)SrcWidth & c_RemainderMask64;
+    const uint64 Remainder64 = (uint32)SrcWidth & c_RemainderMask64<uint32>;
     const uint64 MaskL       = ((uint64)1 << Remainder64) - 1;
     const uint32 MaskL1      = (uint32)(MaskL & 0xFFFFFFFF);
     const uint32 MaskL2      = (uint32)(MaskL >>32);
@@ -254,7 +254,7 @@ void xPixelOpsAVX512::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int3
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;  
 
-  if(((uint32)DstWidth & c_RemainderMask128)==0) //Width%128==0
+  if(((uint32)DstWidth & c_RemainderMask128<uint32>)==0) //Width%128==0
   {
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -286,11 +286,11 @@ void xPixelOpsAVX512::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int3
   }
   else
   {
-    const int32  Width128    = (int32)((uint32)DstWidth & c_MultipleMask128);
-    const uint32 Remainder64 = (uint32)(DstWidth>>1) & c_RemainderMask64;
+    const int32  Width128    = (int32)((uint32)DstWidth & c_MultipleMask128<uint32>);
+    const uint32 Remainder64 = (uint32)(DstWidth>>1) & c_RemainderMask64<uint32>;
     const uint64 MaskL       = ((uint64)1 << Remainder64) - 1;
 
-    const uint64 Remainder128 = (uint32)DstWidth & c_RemainderMask128;
+    const uint64 Remainder128 = (uint32)DstWidth & c_RemainderMask128<uint32>;
     const uint64 MaskS1t      = Remainder128 > 64 ? (uint64)0xFFFFFFFFFFFFFFFF : ((uint64)1 << (Remainder128)) - 1;
     const uint64 MaskS2t      = Remainder128 < 64 ? 0 : ((uint64)1 << (Remainder128 - 64)) - 1;
     const uint32 MaskS1       = (uint32)(MaskS1t & 0xFFFFFFFF);
@@ -352,7 +352,7 @@ bool xPixelOpsAVX512::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 W
   const int32   MaxValue = xBitDepth2MaxValue(BitDepth);
   const __m512i MaxValueV = _mm512_set1_epi16((int16)MaxValue);
 
-  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -367,8 +367,8 @@ bool xPixelOpsAVX512::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 W
   }
   else
   {
-    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
-    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32<uint32>;
     const uint32 MaskL       = ((uint32)1 << Remainder32) - 1;
 
     for(int32 y = 0; y < Height; y++)
@@ -392,7 +392,7 @@ void xPixelOpsAVX512::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA,
   const __m512i d        = _mm512_set1_epi16(ValueD);
   const __m512i PermCtlV = _mm512_setr_epi32(0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15);
 
-  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -431,12 +431,12 @@ void xPixelOpsAVX512::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA,
   }
   else
   {
-    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
-    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32<uint32>;
     const uint32 MaskL       = ((uint32)1 << Remainder32) - 1;
 
-    const uint64 Remainder128 = (uint32)(Width<<2) & c_RemainderMask128;
-    const uint64 MaskS1t      = Remainder128 > 64 ? (uint64)0xFFFFFFFFFFFFFFFF : ((uint64)1 << (Remainder128)) - 1;
+    const uint64 Remainder128 = (uint32)(Width<<2) & c_RemainderMask128<uint32>;
+    const uint64 MaskS1t      = Remainder128 >= 64 ? (uint64)0xFFFFFFFFFFFFFFFF : ((uint64)1 << (Remainder128)) - 1;
     const uint64 MaskS2t      = Remainder128 < 64 ? 0 : ((uint64)1 << (Remainder128 - 64)) - 1;
     const uint32 MaskS1       = (uint32)(MaskS1t & 0xFFFFFFFF);
     const uint32 MaskS2       = (uint32)(MaskS1t >>32);
@@ -507,7 +507,7 @@ void xPixelOpsAVX512::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB,
 {
   const __m512i PermCtlV = _mm512_setr_epi32(0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15);
 
-  if(((uint32)Width & (uint32)c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)Width & (uint32)c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -551,12 +551,12 @@ void xPixelOpsAVX512::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB,
   }
   else
   {
-    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
-    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32<uint32>;
     const uint32 MaskS       = ((uint32)1 << Remainder32) - 1;
 
-    const uint64 Remainder128 = (uint32)(Width<<2) & c_RemainderMask128;
-    const uint64 MaskL1t      = Remainder128 > 64 ? (uint64)0xFFFFFFFFFFFFFFFF : ((uint64)1 << (Remainder128)) - 1;
+    const uint64 Remainder128 = (uint32)(Width<<2) & c_RemainderMask128<uint32>;
+    const uint64 MaskL1t      = Remainder128 >= 64 ? (uint64)0xFFFFFFFFFFFFFFFF : ((uint64)1 << (Remainder128)) - 1;
     const uint64 MaskL2t      = Remainder128 < 64 ? 0 : ((uint64)1 << (Remainder128 - 64)) - 1;
     const uint32 MaskL1       = (uint32)(MaskL1t & 0xFFFFFFFF);
     const uint32 MaskL2       = (uint32)(MaskL1t >>32);
@@ -639,7 +639,7 @@ int32 xPixelOpsAVX512::CountNonZero(const uint16* Src, int32 SrcStride, int32 Wi
 {
   int32 NumNonZero = 0;
 
-  if(((uint32)Width & (uint32)c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)Width & (uint32)c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -655,8 +655,8 @@ int32 xPixelOpsAVX512::CountNonZero(const uint16* Src, int32 SrcStride, int32 Wi
   }
   else
   {
-    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
-    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32<uint32>;
     const uint32 MaskL       = ((uint32)1 << Remainder32) - 1;
 
     for(int32 y = 0; y < Height; y++)
@@ -680,7 +680,7 @@ int32 xPixelOpsAVX512::CountNonZero(const uint16* Src, int32 SrcStride, int32 Wi
 }
 bool xPixelOpsAVX512::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -697,8 +697,8 @@ bool xPixelOpsAVX512::CompareEqual(const uint16* Tst, const uint16* Ref, int32 T
   }
   else
   {
-    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32);
-    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32;
+    const int32  Width32     = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const uint32 Remainder32 = (uint32)(Width) & c_RemainderMask32<uint32>;
     const uint32 MaskL       = ((uint32)1 << Remainder32) - 1;
 
     for(int32 y = 0; y < Height; y++)

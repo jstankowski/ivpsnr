@@ -7,6 +7,7 @@
 
 #include "xCommonDefIVQM.h"
 #include "xCorrespPixelShift.h"
+#include "xCorrespPixelShiftPrms.h"
 
 namespace PMBB_NAMESPACE {
 
@@ -17,15 +18,18 @@ namespace PMBB_NAMESPACE {
 class xShftCompPic 
 {
 public:
-  static void GenShftCompPics(xPicP* DstRef, xPicP* DstTst, const xPicP* SrcRef, const xPicP* SrcTst, const int32V4& GlobalColorDiffRef2Tst, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI = nullptr);
-  static void GenShftCompPics(xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst, const int32V4& GlobalColorDiffRef2Tst, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI = nullptr);
+  static void GenShftCompPics (xPicP* DstRef, xPicP* DstTst, const xPicP* SrcRef, const xPicP* SrcTst,                   const int32V4& GlobalColorDiffRef2Tst, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI = nullptr);
+  static void GenShftCompPics (xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst,                   const int32V4& GlobalColorDiffRef2Tst, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI = nullptr);
+  static void GenShftCompPicsM(xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst, const xPicP* Msk, const int32V4& GlobalColorDiffRef2Tst, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI = nullptr);
 
 protected:
-  static void xGenShftCompPic(xPicP* DstRef, const xPicP* Ref, const xPicP* Tst, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI);
-  static void xGenShftCompPic(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI);
+  static void xGenShftCompPic (xPicP* DstRef, const xPicP* Ref, const xPicP* Tst,                   const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI);
+  static void xGenShftCompPic (xPicI* DstRef, const xPicI* Ref, const xPicI* Tst,                   const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI);
+  static void xGenShftCompPicM(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const xPicP* Msk, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI);
 
-  static void xGenShftCompRow(xPicP* DstRef, const xPicP* Ref, const xPicP* Tst, const int32 y, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights);
-  static void xGenShftCompRow(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const int32 y, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights);
+  static void xGenShftCompRng (xPicP* DstRef, const xPicP* Ref, const xPicP* Tst,                   const int32 BegY, const int32 EndY, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights);
+  static void xGenShftCompRng (xPicI* DstRef, const xPicI* Ref, const xPicI* Tst,                   const int32 BegY, const int32 EndY, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights);
+  static void xGenShftCompRngM(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const xPicP* Msk, const int32 BegY, const int32 EndY, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights);
 };
 
 //===============================================================================================================================================================================================================
@@ -35,11 +39,15 @@ class xShftCompPicProc : public xCorrespPixelShiftPrms, public xMultiThreaded
 public:
   inline void GenShftCompPics(xPicP* DstRef, xPicP* DstTst, const xPicP* SrcRef, const xPicP* SrcTst, const int32V4& GlobalColorDiffRef2Tst)
   {
-    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, &m_ThPI);
+    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
   }
   inline void GenShftCompPics(xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst, const int32V4& GlobalColorDiffRef2Tst)
   {
-    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, &m_ThPI);
+    xShftCompPic::GenShftCompPics(DstRef, DstTst, SrcRef, SrcTst, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
+  }
+  inline void GenShftCompPicsM(xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst, const xPicP* Msk, const int32V4& GlobalColorDiffRef2Tst)
+  {
+    xShftCompPic::GenShftCompPicsM(DstRef, DstTst, SrcRef, SrcTst, Msk, GlobalColorDiffRef2Tst, m_SearchRange, m_CmpWeightsSearch, m_ThPI);
   }
 };
 

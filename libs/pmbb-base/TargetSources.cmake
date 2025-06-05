@@ -1,13 +1,13 @@
-set(SRCLIST_COMMON_H src/xCommonDefPMBB-BASE.h)
+set(SRCLIST_COMMON_H src/xCommonDefBASE.h)
 
-set(SRCLIST_UTILS_H src/xCfgINI.h src/xFile.h src/xMemory.h src/xString.h)
-set(SRCLIST_UTILS_C src/xCfgINI.cpp src/xFile.cpp src/xMemory.cpp src/xString.cpp)
+set(SRCLIST_UTILS_H src/xErrMsg.h   src/xCfgINI.h   src/xFile.h   src/xMemory.h    src/xString.h  )
+set(SRCLIST_UTILS_C src/xErrMsg.cpp src/xCfgINI.cpp src/xFile.cpp src/xMemory.cpp  src/xString.cpp)
 
 set(SRCLIST_PROC_H src/xProcInfo.h  )
 set(SRCLIST_PROC_C src/xProcInfo.cpp)
 
-set(SRCLIST_DISPATCH_H src/xDispatch.h)
-set(SRCLIST_DISPATCH_C ""             )
+set(SRCLIST_DISPATCH_H src/xDispatch.h src/xDispatchUtils.h)
+set(SRCLIST_DISPATCH_C ""                                  )
 
 set(SRCLIST_PUBLIC  ${SRCLIST_COMMON_H} ${SRCLIST_UTILS_H} ${SRCLIST_PROC_H} ${SRCLIST_DISPATCH_H})
 set(SRCLIST_PRIVATE                     ${SRCLIST_UTILS_C} ${SRCLIST_PROC_C} ${SRCLIST_DISPATCH_C})

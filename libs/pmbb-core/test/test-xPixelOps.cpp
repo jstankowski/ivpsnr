@@ -1,5 +1,5 @@
-/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+﻿/*
+    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -14,25 +14,45 @@
 #include "../src/xPic.h"
 #include "../src/xPlane.h"
 #include "../src/xTestUtils.h"
+#include "xTimeUtils.h"
 
 using namespace PMBB_NAMESPACE;
 
 //===============================================================================================================================================================================================================
 
-static const std::vector<int32> c_Dimms = { 128, 127, 129, 512, 511, 513 };
+static const std::vector<int32> c_Dimms = { 63, 64, 65, 128, 127, 129, 255, 256, 257 };
 static const std::vector<int32> c_Margs = { 0, 4, 32 };
-static const std::vector<int32> c_BitDs = { 8, 10 ,12, 14 };
+static const std::vector<int32> c_BitDs = { 8, 10, 12, 14 };
 static constexpr int32          c_DefBitDepth    = 14;
 static constexpr int32          c_DefMaxValue    = (1<<c_DefBitDepth) - 1;
 static constexpr int32          c_NumRandomTests = 8;
 
 //===============================================================================================================================================================================================================
 
+using fCvtU8toU16 = std::function<void(uint16*, const uint8*, int32, int32, int32, int32)>;
+using fCvtU16toU8 = std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>;
+
+using pCvtU8toU16 = void(*)(uint16*, const uint8*, int32, int32, int32, int32);
+using pCvtU16toU8 = void(*)(uint8*, const uint16*, int32, int32, int32, int32);
+
+using fUpsample   = std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>;
+using fDownsample = std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>;
+
+using fCvtUpsampleU8toU16   = std::function<void(uint16*, const uint8*, int32, int32, int32, int32)>;
+using fCvtDownsampleU16toU8 = std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>;
+
+using fAOS4fromSOA3 = std::function<void(uint16*, const uint16*, const uint16*, const uint16*, const uint16, int32, int32, int32, int32)>;
+using fSOA3fromAOS4 = std::function<void(uint16*, uint16*, uint16*, const uint16*, int32, int32, int32, int32)>                          ;
+
+using fCheckIfInRange = std::function<bool (const uint16*, int32, int32, int32, int32)>;
+using fCountNonZero   = std::function<int32(const uint16*, int32, int32, int32)>;
+using fCompareEqual   = std::function<bool (const uint16*, const uint16*, int32, int32, int32, int32)>;
+
+//===============================================================================================================================================================================================================
+
 void testCopy()
 {
-  std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
-  std::mt19937       RandomGenerator(RandomDevice()); //Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<uint32> RandomDistribution(0);
+  uint32 State = xTestUtils::c_XorShiftSeed;
 
   for(const int32 y : c_Dimms)
   {
@@ -51,10 +71,9 @@ void testCopy()
         for(int32 n = 0; n < c_NumRandomTests; n++)
         {          
           Src->fill(0);
-          uint32 Seed = RandomDistribution(RandomGenerator);
-          xTestUtils::fillRandom(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight(), 14, Seed);
-          CAPTURE(Description + fmt::format(" Seed={}", Seed));
-
+          CAPTURE(Description + fmt::format(" State={}", State));
+          State = xTestUtils::fillRandom(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight(), 14, State);
+          
           if(m == 0)
           {
             Dst->fill(0);
@@ -79,14 +98,11 @@ void testCopy()
   }
 }
 
-void testCvt(
-  std::function<void(uint16*, const uint8* , int32, int32, int32, int32)>CvtU8toU16,
-  std::function<void(uint8* , const uint16*, int32, int32, int32, int32)>CvtU16toU8
-  )
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testCvt(fCvtU8toU16 CvtU8toU16, fCvtU16toU8 CvtU16toU8)
 {
-  std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
-  std::mt19937       RandomGenerator(RandomDevice()); //Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<uint32> RandomDistribution(0);
+  uint32 State = xTestUtils::c_XorShiftSeed;
 
   for(const int32 y : c_Dimms)
   {
@@ -109,9 +125,8 @@ void testCvt(
 
         for(int32 n = 0; n < c_NumRandomTests; n++)
         {
-          uint32 Seed = RandomDistribution(RandomGenerator);
-          CAPTURE(Description + fmt::format(" Seed={}", Seed));
-          xTestUtils::fillRandom(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight(), 8, Seed);
+          CAPTURE(Description + fmt::format(" State={}", State));
+          State = xTestUtils::fillRandom(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight(), 8, State);
           CvtU16toU8(Imm->getAddr(), Src->getAddr(), Imm->getStride(), Src->getStride(), Imm->getWidth(), Imm->getHeight());
           CvtU8toU16(Dst->getAddr(), Imm->getAddr(), Dst->getStride(), Imm->getStride(), Dst->getWidth(), Dst->getHeight());
           CHECK(xTestUtils::isSameBuffer(Src->getBuffer(), Dst->getBuffer(), Dst->getBuffNumPels(), true));
@@ -139,15 +154,11 @@ void testCvt(
   }
 }
 
-void testResample(
-  std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>Upsample,
-  std::function<void(uint16*, const uint16*, int32, int32, int32, int32)>Downsample,
-  const int32V2& SizeMultiplier
-)
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testResample(fUpsample Upsample, fDownsample Downsample, const int32V2& SizeMultiplier)
 {
-  std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
-  std::mt19937       RandomGenerator(RandomDevice()); //Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<uint32> RandomDistribution(0);
+  uint32 State = xTestUtils::c_XorShiftSeed;
 
   for(const int32 y : c_Dimms)
   {
@@ -172,9 +183,8 @@ void testResample(
 
         for(int32 n = 0; n < c_NumRandomTests; n++)
         {
-          uint32 Seed = RandomDistribution(RandomGenerator);
-          CAPTURE(Description + fmt::format(" Seed={}", Seed));
-          xTestUtils::fillRandom(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight(), 14, Seed);
+          CAPTURE(Description + fmt::format(" State={}", State));
+          State = xTestUtils::fillRandom(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight(), 14, State);
           int64 SumSrc = xTestUtils::calcSum(Src->getAddr(), Src->getStride(), Src->getWidth(), Src->getHeight());
           Upsample  (Imm->getAddr(), Src->getAddr(), Imm->getStride(), Src->getStride(), Imm->getWidth(), Imm->getHeight());
           int64 SumImm = xTestUtils::calcSum(Imm->getAddr(), Imm->getStride(), Imm->getWidth(), Imm->getHeight());
@@ -191,16 +201,12 @@ void testResample(
     }
   }
 }
-void testCvtResample(
-  std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>CvtU16toU8,
-  std::function<void(uint16*, const uint8*, int32, int32, int32, int32)>CvtUpsampleU8toU16,
-  std::function<void(uint8*, const uint16*, int32, int32, int32, int32)>CvtDownsampleU16toU8,
-  const int32V2& SizeMultiplier
-)
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testCvtResample(fCvtU16toU8 CvtU16toU8, fCvtUpsampleU8toU16 CvtUpsampleU8toU16, fCvtDownsampleU16toU8 CvtDownsampleU16toU8, const int32V2& SizeMultiplier)
 {
-  std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
-  std::mt19937       RandomGenerator(RandomDevice()); //Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<uint32> RandomDistribution(0);
+  xTestUtils::xXorShiftGen32 TestGen; std::uniform_int_distribution<uint32> RandomDistribution(0);
 
   for(const int32 y : c_Dimms)
   {
@@ -227,7 +233,7 @@ void testCvtResample(
 
         for(int32 n = 0; n < c_NumRandomTests; n++)
         {
-          uint32 Seed = RandomDistribution(RandomGenerator);
+          uint32 Seed = RandomDistribution(TestGen);
           CAPTURE(Description + fmt::format(" Seed={}", Seed));
           xTestUtils::fillRandom(Pre->getAddr(), Pre->getStride(), Pre->getWidth(), Pre->getHeight(), 8, Seed);
           CvtU16toU8          (Src->getAddr(), Pre->getAddr(), Src->getStride(), Pre->getStride(), Src->getWidth(), Src->getHeight());
@@ -249,14 +255,11 @@ void testCvtResample(
   }
 }
 
-void testRearrange(
-  std::function<void(uint16*, const uint16*, const uint16*, const uint16*, const uint16, int32, int32, int32, int32)> AOS4fromSOA3,
-  std::function<void(uint16*, uint16*, uint16*, const uint16*, int32, int32, int32, int32)> SOA3fromAOS4
-)
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testRearrange(fAOS4fromSOA3 AOS4fromSOA3, fSOA3fromAOS4 SOA3fromAOS4)
 {
-  std::random_device RandomDevice;  //Will be used to obtain a seed for the random number engine
-  std::mt19937       RandomGenerator(RandomDevice()); //Standard mersenne_twister_engine seeded with rd()
-  std::uniform_int_distribution<uint32> RandomDistribution(0);
+  xTestUtils::xXorShiftGen32 TestGen; std::uniform_int_distribution<uint32> RandomDistribution(0);
 
   for(const int32 y : c_Dimms)
   {
@@ -299,7 +302,7 @@ void testRearrange(
         for(int32 n = 0; n < c_NumRandomTests; n++)
         {
           CAPTURE(Description + fmt::format(" RandomTestCnt={}", n));
-          for(int32 c = 0; c < 3; c++) { xTestUtils::fillRandom(SrcP->getAddr((eCmp)c), SrcP->getStride(), SrcP->getWidth(), SrcP->getHeight(), 8, RandomDistribution(RandomGenerator)); }
+          for(int32 c = 0; c < 3; c++) { xTestUtils::fillRandom(SrcP->getAddr((eCmp)c), SrcP->getStride(), SrcP->getWidth(), SrcP->getHeight(), 8, RandomDistribution(TestGen)); }
           ImmI->fill(0);
           DstP->fill(0);
           AOS4fromSOA3((uint16*)(ImmI->getAddr()), SrcP->getAddr(eCmp::C0), SrcP->getAddr(eCmp::C1), SrcP->getAddr(eCmp::C2), 0, ImmI->getStride()*4, SrcP->getStride(), ImmI->getWidth(), ImmI->getHeight());
@@ -319,7 +322,9 @@ void testRearrange(
   }
 }
 
-void testCheckIfInRange(std::function<bool(const uint16*, int32, int32, int32, int32)> CheckIfInRange)
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testCheckIfInRange(fCheckIfInRange CheckIfInRange)
 {
   for(const int32 y : c_Dimms)
   {
@@ -373,8 +378,12 @@ void testCheckIfInRange(std::function<bool(const uint16*, int32, int32, int32, i
   }
 }
 
-void testCountNonZero(std::function<int32(const uint16*, int32, int32, int32)> CountNonZero)
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testCountNonZero(fCountNonZero CountNonZero)
 {
+  uint32 State = xTestUtils::c_XorShiftSeed;
+
   for(const int32 y : c_Dimms)
   {
     for(const int32 x : c_Dimms)
@@ -390,6 +399,7 @@ void testCountNonZero(std::function<int32(const uint16*, int32, int32, int32)> C
         //buffers create
         xPlane<uint16>* P = new xPlane<uint16>(Size, 14, m);
 
+        //almost zero
         P->fill(0);
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 0);
         P->accessPel({0, 0}) = 1;
@@ -407,6 +417,7 @@ void testCountNonZero(std::function<int32(const uint16*, int32, int32, int32)> C
         P->accessPel({ x-1, y-1 }) = 1;
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 7);
 
+        //almost all
         P->fill(c_DefMaxValue);
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 0);
         P->accessPel({ 0, 0 }) = 0;
@@ -424,6 +435,13 @@ void testCountNonZero(std::function<int32(const uint16*, int32, int32, int32)> C
         P->accessPel({ x - 1, y - 1 }) = 0;
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 7);
 
+        //random
+        P->fill(0);
+        State = xTestUtils::fillRandom01(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight(), State);
+        uint32 RefNonZero = xPixelOpsSTD::CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight());
+        uint32 TstNonZero = CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight());
+        CHECK(RefNonZero == TstNonZero);
+
         //buffers destroy
         delete P;
       }
@@ -431,7 +449,9 @@ void testCountNonZero(std::function<int32(const uint16*, int32, int32, int32)> C
   }
 }
 
-void testCompareEqual(std::function<bool(const uint16*, const uint16*, int32, int32, int32, int32)> CompareEqual)
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+void testCompareEqual(fCompareEqual CompareEqual)
 {
   for(const int32 y : c_Dimms)
   {
@@ -493,230 +513,65 @@ void testCompareEqual(std::function<bool(const uint16*, const uint16*, int32, in
 
 TEST_CASE("xPixelOps::Copy")
 {
-  tTimePoint T = tClock::now();
   testCopy();
-  fmt::print("TIME(xPixelOps::Copy) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
 }
 
 TEST_CASE("xPixelOpsSTD")
 {
-  tTimePoint T = tClock::now();
-  testCvt
-  (
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt)
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::UpsampleHV  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::DownsampleHV),
-    { 2,2 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt            ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSTD::CvtUpsampleHV  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsampleHV),
-    { 2,2 }
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::UpsampleH  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::DownsampleH),
-    { 2,1 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::Cvt           ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSTD::CvtUpsampleH  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD::CvtDownsampleH),
-    { 2,1 }
-  );
-  testRearrange
-  (
-    &xPixelOpsSTD::AOS4fromSOA3,
-    &xPixelOpsSTD::SOA3fromAOS4
-  );
-  testCheckIfInRange
-  (
-    &xPixelOpsSTD::CheckIfInRange
-  );
-  testCountNonZero
-  (
-    &xPixelOpsSTD::CountNonZero
-  );
-  testCompareEqual
-  (
-    &xPixelOpsSTD::CompareEqual
-  );
-  fmt::print("TIME(xPixelOpsSTD) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  testCvt           (static_cast<pCvtU8toU16>(&xPixelOpsSTD::Cvt), static_cast<pCvtU16toU8>(&xPixelOpsSTD::Cvt));
+  testResample      (&xPixelOpsSTD::UpsampleHV  ,&xPixelOpsSTD::DownsampleHV, { 2,2 });
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsSTD::Cvt), &xPixelOpsSTD::CvtUpsampleHV, &xPixelOpsSTD::CvtDownsampleHV, { 2,2 });
+  testResample      (&xPixelOpsSTD::UpsampleH, &xPixelOpsSTD::DownsampleH, { 2,1 } );
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsSTD::Cvt), &xPixelOpsSTD::CvtUpsampleH, &xPixelOpsSTD::CvtDownsampleH, { 2,1 });
+  testRearrange     (&xPixelOpsSTD::AOS4fromSOA3, &xPixelOpsSTD::SOA3fromAOS4);
+  testCheckIfInRange(&xPixelOpsSTD::CheckIfInRange                           );
+  testCountNonZero  (&xPixelOpsSTD::CountNonZero                             );
+  testCompareEqual  (&xPixelOpsSTD::CompareEqual                             );
 }
 
 #if X_SIMD_CAN_USE_SSE
 TEST_CASE("xPixelOpsSSE")
 {
-  tTimePoint T = tClock::now();
-  testCvt
-  (
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt)
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::UpsampleHV  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::DownsampleHV),
-    { 2,2 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt            ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSSE::CvtUpsampleHV  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::CvtDownsampleHV),
-    { 2,2 }
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::UpsampleH  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::DownsampleH),
-    { 2,1 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::Cvt           ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsSSE::CvtUpsampleH  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSSE::CvtDownsampleH),
-    { 2,1 }
-  );
-  testRearrange
-  (
-    &xPixelOpsSSE::AOS4fromSOA3,
-    &xPixelOpsSSE::SOA3fromAOS4
-  );
-  testCheckIfInRange
-  (
-    &xPixelOpsSSE::CheckIfInRange
-  );
-  testCountNonZero
-  (
-    &xPixelOpsSSE::CountNonZero
-  );
-  testCompareEqual
-  (
-    &xPixelOpsSSE::CompareEqual
-  );
-  fmt::print("TIME(xPixelOpsSSE) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  testCvt           (static_cast<pCvtU8toU16>(&xPixelOpsSSE::Cvt), static_cast<pCvtU16toU8>(&xPixelOpsSSE::Cvt));
+  testResample      (&xPixelOpsSSE::UpsampleHV  ,&xPixelOpsSSE::DownsampleHV, { 2,2 });
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsSSE::Cvt), &xPixelOpsSSE::CvtUpsampleHV, &xPixelOpsSSE::CvtDownsampleHV, { 2,2 });
+  testResample      (&xPixelOpsSSE::UpsampleH, &xPixelOpsSSE::DownsampleH, { 2,1 } );
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsSSE::Cvt), &xPixelOpsSSE::CvtUpsampleH, &xPixelOpsSSE::CvtDownsampleH, { 2,1 });
+  testRearrange     (&xPixelOpsSSE::AOS4fromSOA3, &xPixelOpsSSE::SOA3fromAOS4);
+  testCheckIfInRange(&xPixelOpsSSE::CheckIfInRange                           );
+  testCountNonZero  (&xPixelOpsSSE::CountNonZero                             );
+  testCompareEqual  (&xPixelOpsSSE::CompareEqual                             );
 }
-#endif
+#endif //X_SIMD_CAN_USE_SSE
 
 #if X_SIMD_CAN_USE_AVX
 TEST_CASE("xPixelOpsAVX")
 {
-  tTimePoint T = tClock::now();
-  testCvt
-  (
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt)
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::UpsampleHV  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::DownsampleHV),
-    { 2,2 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt            ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX::CvtUpsampleHV  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::CvtDownsampleHV),
-    { 2,2 }
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::UpsampleH  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::DownsampleH),
-    { 2,1 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::Cvt           ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX::CvtUpsampleH  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX::CvtDownsampleH),
-    { 2,1 }
-  );
-
-  testRearrange
-  (
-    &xPixelOpsAVX::AOS4fromSOA3,
-    &xPixelOpsAVX::SOA3fromAOS4
-  );
-  testCheckIfInRange
-  (
-    &xPixelOpsAVX::CheckIfInRange
-  );
-  testCountNonZero
-  (
-    &xPixelOpsAVX::CountNonZero
-  );
-  testCompareEqual
-  (
-    &xPixelOpsAVX::CompareEqual
-  );
-  fmt::print("TIME(xPixelOpsAVX) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  testCvt           (static_cast<pCvtU8toU16>(&xPixelOpsAVX::Cvt), static_cast<pCvtU16toU8>(&xPixelOpsAVX::Cvt));
+  testResample      (&xPixelOpsAVX::UpsampleHV  ,&xPixelOpsAVX::DownsampleHV, { 2,2 });
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsAVX::Cvt), &xPixelOpsAVX::CvtUpsampleHV, &xPixelOpsAVX::CvtDownsampleHV, { 2,2 });
+  testResample      (&xPixelOpsAVX::UpsampleH, &xPixelOpsAVX::DownsampleH, { 2,1 } );
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsAVX::Cvt), &xPixelOpsAVX::CvtUpsampleH, &xPixelOpsAVX::CvtDownsampleH, { 2,1 });
+  testRearrange     (&xPixelOpsAVX::AOS4fromSOA3, &xPixelOpsAVX::SOA3fromAOS4);
+  testCheckIfInRange(&xPixelOpsAVX::CheckIfInRange                           );
+  testCountNonZero  (&xPixelOpsAVX::CountNonZero                             );
+  testCompareEqual  (&xPixelOpsAVX::CompareEqual                             );
 }
-#endif
+#endif //X_SIMD_CAN_USE_AVX
 
 #if X_SIMD_CAN_USE_AVX512
 TEST_CASE("xPixelOpsAVX512")
 {
-  tTimePoint T = tClock::now();
-  testCvt
-  (
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX512::Cvt),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::Cvt)
-  );
-  testResample
-  (
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::UpsampleHV  ),
-    static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::DownsampleHV),
-    { 2,2 }
-  );
-  testCvtResample
-  (
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::Cvt            ),
-    static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX512::CvtUpsampleHV  ),
-    static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsSTD   ::CvtDownsampleHV),
-    { 2,2 }
-  );
-  //testResample
-  //(
-  //  static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::UpsampleH  ),
-  //  static_cast<void(*)(uint16*, const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::DownsampleH),
-  //  { 2,1 }
-  //);
-  //testCvtResample
-  //(
-  //  static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::Cvt           ),
-  //  static_cast<void(*)(uint16*, const uint8* , int32, int32, int32, int32)>(&xPixelOpsAVX512::CvtUpsampleH  ),
-  //  static_cast<void(*)(uint8* , const uint16*, int32, int32, int32, int32)>(&xPixelOpsAVX512::CvtDownsampleH),
-  //  { 2,1 }
-  //);
-  testRearrange
-  (
-    &xPixelOpsAVX512::AOS4fromSOA3,
-    &xPixelOpsAVX512::SOA3fromAOS4
-  );
-  testCheckIfInRange
-  (
-    &xPixelOpsAVX512::CheckIfInRange
-  );
-  testCountNonZero
-  (
-    &xPixelOpsAVX512::CountNonZero
-  );
-  testCompareEqual
-  (
-    &xPixelOpsAVX512::CompareEqual
-  );
-  fmt::print("TIME(xPixelOpsAVX512) = {}s\n", std::chrono::duration_cast<tDurationS>(tClock::now() - T).count());
+  testCvt           (static_cast<pCvtU8toU16>(&xPixelOpsAVX512::Cvt), static_cast<pCvtU16toU8>(&xPixelOpsAVX512::Cvt));
+  testResample      (&xPixelOpsAVX512::UpsampleHV  ,&xPixelOpsAVX512::DownsampleHV, { 2,2 });
+  //testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsAVX512::Cvt), &xPixelOpsAVX512::CvtUpsampleHV, &xPixelOpsAVX512::CvtDownsampleHV, { 2,2 });
+  //testResample      (&xPixelOpsAVX512::UpsampleH, &xPixelOpsAVX512::DownsampleH, { 2,1 } );
+  //testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsAVX512::Cvt), &xPixelOpsAVX512::CvtUpsampleH, &xPixelOpsAVX512::CvtDownsampleH, { 2,1 });
+  testRearrange     (&xPixelOpsAVX512::AOS4fromSOA3, &xPixelOpsAVX512::SOA3fromAOS4);
+  testCheckIfInRange(&xPixelOpsAVX512::CheckIfInRange                              );
+  testCountNonZero  (&xPixelOpsAVX512::CountNonZero                                );
+  testCompareEqual  (&xPixelOpsAVX512::CompareEqual                                );
 }
-#endif
+#endif //X_SIMD_CAN_USE_AVX512
+
+//===============================================================================================================================================================================================================

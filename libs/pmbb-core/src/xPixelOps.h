@@ -2,9 +2,7 @@
     SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
-
 #pragma once
-
 #include "xCommonDefCORE.h"
 #include "xPixelOpsBase.h"
 #include "xVec.h"
@@ -46,12 +44,15 @@ public:
   //===============================================================================================================================================================================================================
   // Copy & fill
   //===============================================================================================================================================================================================================
-  template <typename PelType> static inline void Copy(PelType* restrict Dst, const PelType* Src, int32 Area);
+  template <typename PelType> static inline void Copy(PelType* restrict Dst, const PelType* Src, int64 Area);
   template <typename PelType> static inline void Copy(PelType* restrict Dst, const PelType* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height);
   template <typename PelType> static inline void CopyPart(PelType* restrict Dst, const PelType* Src, int32 DstStride, int32 SrcStride, int32V2 DstCoord, int32V2 SrcCoord, int32V2 Size);
 
-  template <typename PelType> static inline void Fill(PelType* restrict Dst, const PelType Value, int32 Area);
+  template <typename PelType> static inline void Fill(PelType* restrict Dst, const PelType Value, int64 Area);
   template <typename PelType> static inline void Fill(PelType* restrict Dst, const PelType Value, int32 DstStride, int32 Width, int32 Height);
+
+  template <typename PelType> static inline void Zero(PelType* restrict Dst,                      int64 Area);
+  template <typename PelType> static inline void Zero(PelType* restrict Dst,                      int32 DstStride, int32 Width, int32 Height);
 
   //===============================================================================================================================================================================================================
   // Copy with compile time known size
@@ -59,17 +60,19 @@ public:
   //template <int32 Width, int32 Height, typename PelType> static inline void CopyCTS(PelType* Dst, const PelType* Src, int32 DstStride, int32 SrcStride);
 
 public:  
-  static inline tStr  FindOutOfRange (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth, int32 MsgNumLimit) { return xPixelOpsSTD::FindOutOfRange(Src, Stride, Width, Height, BitDepth, MsgNumLimit); }
-  static inline void  ClipToRange    (uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::ClipToRange   (Ptr, Stride, Width, Height, BitDepth); }
-  static inline tStr  FindDiscrepancy(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 MsgNumLimit) { return xPixelOpsSTD::FindDiscrepancy(Tst, Ref, TstStride, RefStride, Width, Height, MsgNumLimit); }
-  static inline void  ExtendMargin   (uint16* Addr, int32 Stride, int32 Width, int32 Height, int32 Margin) { xPixelOpsSTD::ExtendMargin(Addr, Stride, Width, Height, Margin); }
+  static inline tStr   FindOutOfRange (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth, int32 MsgNumLimit) { return xPixelOpsSTD::FindOutOfRange(Src, Stride, Width, Height, BitDepth, MsgNumLimit); }
+  static inline void   ClipToRange    (uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::ClipToRange   (Ptr, Stride, Width, Height, BitDepth); }
+  static inline tStr   FindDiscrepancy(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 MsgNumLimit) { return xPixelOpsSTD::FindDiscrepancy(Tst, Ref, TstStride, RefStride, Width, Height, MsgNumLimit); }
+  static inline void   ExtendMargin   (uint16* Addr, int32 Stride, int32 Width, int32 Height, int32 Margin) { xPixelOpsSTD::ExtendMargin(Addr, Stride, Width, Height, Margin); }
+  static inline uint64 CountEqual     (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
+  static inline uint64 CountEqualMask (const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountEqualMask(Tst, Ref, Msk, TstStride, RefStride, MskStride, Width, Height); }
 
 #if   X_CAN_USE_AVX512
   
   static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
   static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
   static inline void  UpsampleHV     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::UpsampleHV   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
-  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::DownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::DownsampleHV (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
   static inline void  CvtUpsampleHV  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX512::CvtUpsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
   static inline void  CvtDownsampleHV(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::CvtDownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
   static inline void  UpsampleH      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsAVX::UpsampleH      (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
@@ -118,7 +121,7 @@ public:
   static inline int32 CountNonZero   (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsSSE::CountNonZero(Src, SrcStride, Width, Height); }
   static inline bool  CompareEqual   (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsSSE::CompareEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
 
-#else //X_CAN_USE_???
+#else 
 
   static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSTD::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
   static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsSTD::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
@@ -136,13 +139,13 @@ public:
   static inline int32 CountNonZero   (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountNonZero(Src, SrcStride, Width, Height); }
   static inline bool  CompareEqual   (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsSTD::CompareEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
 
-#endif //X_CAN_USE_???
+#endif 
 };
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Copy & fill
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-template <typename PelType> void xPixelOps::Copy(PelType* restrict Dst, const PelType* Src, int32 Area)
+template <typename PelType> void xPixelOps::Copy(PelType* restrict Dst, const PelType* Src, int64 Area)
 {
   ::memcpy(Dst, Src, Area * sizeof(PelType));
 }
@@ -171,7 +174,7 @@ template <typename PelType> void xPixelOps::CopyPart(PelType* restrict Dst, cons
     ::memcpy(DstLine, SrcLine, Size.getX() * sizeof(PelType));
   }
 }
-template <typename PelType> inline void xPixelOps::Fill(PelType* restrict Dst, const PelType Value, int32 Area)
+template <typename PelType> inline void xPixelOps::Fill(PelType* restrict Dst, const PelType Value, int64 Area)
 {
   if constexpr(std::is_integral_v<PelType> && sizeof(PelType) == 1)
   {
@@ -185,12 +188,36 @@ template <typename PelType> inline void xPixelOps::Fill(PelType* restrict Dst, c
 }
 template <typename PelType> inline void xPixelOps::Fill(PelType* restrict Dst, const PelType Value, int32 DstStride, int32 Width, int32 Height)
 {
+  if(Value == (PelType)0)
+  {
+    for(int32 y = 0; y < Height; y++)
+    {
+      memset(Dst, 0, Width * sizeof(PelType));
+      Dst += DstStride;
+    }
+  }
+  else
+  {
+    for(int32 y = 0; y < Height; y++)
+    {
+      xMemsetX(Dst, Value, Width);
+      Dst += DstStride;
+    }
+  }
+}
+template <typename PelType> inline void xPixelOps::Zero(PelType* restrict Dst, int64 Area)
+{
+  memset(Dst, 0, Area*sizeof(PelType));
+}
+template <typename PelType> inline void xPixelOps::Zero(PelType* restrict Dst, int32 DstStride, int32 Width, int32 Height)
+{
   for(int32 y = 0; y < Height; y++)
   {
-    xMemsetX(Dst, Value, Width);
+    memset(Dst, 0, Width * sizeof(PelType));
     Dst += DstStride;
   }
 }
+
 //template <int32 Width, int32 Height, typename PelType> void xPixelOps::CopyCTS(PelType* Dst, const PelType* Src, int32 DstStride, int32 SrcStride)
 //{
 //  for(int32 y = 0; y < Height; y++)

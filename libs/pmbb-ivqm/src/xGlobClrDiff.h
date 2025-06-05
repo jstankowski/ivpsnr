@@ -38,8 +38,8 @@ public:
 class xGlobClrDiffProc : public xGlobClrDiffPrms, public xMultiThreaded
 {
 public:
-  inline int32V4 CalcGlobalColorDiff (const xPicP* Tst, const xPicP* Ref                                            ) { return xGlobClrDiff::CalcGlobalColorDiff (Ref, Tst,      m_CmpUnntcbCoef,               &m_ThPI); }
-  inline int32V4 CalcGlobalColorDiffM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, const int32 NumNonMasked) { return xGlobClrDiff::CalcGlobalColorDiffM(Ref, Tst, Msk, m_CmpUnntcbCoef, NumNonMasked, &m_ThPI); }
+  inline int32V4 CalcGlobalColorDiff (const xPicP* Tst, const xPicP* Ref                                            ) { return xGlobClrDiff::CalcGlobalColorDiff (Ref, Tst,      m_CmpUnntcbCoef,               m_ThPI); }
+  inline int32V4 CalcGlobalColorDiffM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, const int32 NumNonMasked) { return xGlobClrDiff::CalcGlobalColorDiffM(Ref, Tst, Msk, m_CmpUnntcbCoef, NumNonMasked, m_ThPI); }
 };
 
 //===============================================================================================================================================================================================================

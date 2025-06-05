@@ -4,8 +4,8 @@
 */
 
 #pragma once
-
 #include "xCommonDefCORE.h"
+#include "xDistortionSTD.h"
 
 #if X_SIMD_CAN_USE_AVX512
 
@@ -16,13 +16,15 @@ namespace PMBB_NAMESPACE {
 class xDistortionAVX512
 {
 public:
-  //SD, SSD
-  static  int32 CalcSD (const uint16* restrict Tst, const uint16* restrict Ref,                                   int32 Area               );
-  static  int32 CalcSD (const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
-  static uint32 CalcSAD(const uint16* restrict Tst, const uint16* restrict Ref, int32 Area                                                 );
-  static uint32 CalcSAD(const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
-  static uint64 CalcSSD(const uint16* restrict Tst, const uint16* restrict Ref,                                   int32 Area               );
-  static uint64 CalcSSD(const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
+  //SD, SAD, SSD
+  static  int64 CalcSD14 (const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
+  static  int64 CalcSD16 (const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
+  static uint64 CalcSAD  (const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
+  static uint64 CalcSSD14(const uint16* restrict Tst, const uint16* restrict Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height);
+
+  static inline  int64 CalcSD (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return BitDepth <= 14 ? CalcSD14(Tst, Ref, TstStride, RefStride, Width, Height) : CalcSD16(Tst, Ref, TstStride, RefStride, Width, Height); }
+  static inline uint64 CalcSAD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return BitDepth <= 14 ? CalcSAD  (Tst, Ref, TstStride, RefStride, Width, Height) : xDistortionSTD::CalcSAD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
+  static inline uint64 CalcSSD(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 BitDepth) { return BitDepth <= 14 ? CalcSSD14(Tst, Ref, TstStride, RefStride, Width, Height) : xDistortionSTD::CalcSSD(Tst, Ref, TstStride, RefStride, Width, Height, BitDepth); }
 };
 
 //===============================================================================================================================================================================================================

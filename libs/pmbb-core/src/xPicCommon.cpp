@@ -26,7 +26,7 @@ void xPicCommon::xInit(int32V2 Size, int32 BitDepth, int32 Margin, int32 NumCmps
   m_NumCmps  = NumCmps;
 
   m_BytesPerSample  = m_BitDepth <= 8 ? 1 : 2;
-  m_BuffCmpNumPels  = (m_Width + (m_Margin << 1)) * (m_Height + (m_Margin << 1));
+  m_BuffCmpNumPels  = (int64)(m_Width + (m_Margin << 1)) * (int64)(m_Height + (m_Margin << 1));
   m_BuffCmpNumBytes = m_BuffCmpNumPels * PelNumBytes;
 
   m_IsMarginExtended = false;

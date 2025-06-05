@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "xCommonDefPMBB-BASE.h"
+#include "xCommonDefBASE.h"
 #include <string>
 #include <sstream>
 #include <vector>
@@ -32,7 +32,6 @@ public:
   
   static inline std::string toUpper(const std::string_view Src) { std::string Dst; std::transform(Src.cbegin(), Src.cend(), std::back_inserter(Dst), [](auto C) { return (char)std::toupper(C); }); return Dst; }
   static inline std::string toLower(const std::string_view Src) { std::string Dst; std::transform(Src.cbegin(), Src.cend(), std::back_inserter(Dst), [](auto C) { return (char)std::tolower(C); }); return Dst; }
-
 
   static std::string replaceFirst(const std::string& Source, const std::string& Token, const std::string& ReplaceTo);
   static std::string replaceLast (const std::string& Source, const std::string& Token, const std::string& ReplaceTo);
@@ -63,7 +62,7 @@ public:
     std::transform(VecStr.cbegin(), VecStr.cend(), std::back_inserter(VecXXX), [&](XXX X) -> std::string { return std::to_string(X); });
     return VecXXX;
   }
-
+  static std::string formatBytes(uint64 Bytes);
 
 };
 

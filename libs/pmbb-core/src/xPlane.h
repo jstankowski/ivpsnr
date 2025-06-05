@@ -8,6 +8,8 @@
 #include "xCommonDefCORE.h"
 #include "xPicCommon.h"
 #include "xMemory.h"
+#include "xErrMsg.h"
+#include "xPixelOps.h"
 #include <type_traits>
 
 namespace PMBB_NAMESPACE {
@@ -18,11 +20,11 @@ namespace PMBB_NAMESPACE {
 template <typename PelType> class xPlane : public xPicCommon
 {
 public:
-  typedef PelType T;
+  using T = PelType;
 
 protected:
-  PelType* m_Buffer = nullptr; //picture buffer
-  PelType* m_Origin = nullptr; //pel origin, pel access -> m_PelOrg[y*m_PelStride + x]
+  T* m_Buffer = nullptr; //picture buffer
+  T* m_Origin = nullptr; //pel origin, pel access -> m_PelOrg[y*m_PelStride + x]
 
 public:
   //general functions
@@ -37,6 +39,7 @@ public:
 
   void   clear  ();
   void   copy   (const xPlane* Src);
+  void   zero   ();
   void   fill   (PelType Value);
   bool   check  (const std::string& Name) const;  
   void   conceal(                       );
@@ -45,33 +48,35 @@ public:
   bool   equal  (const xPlane* Ref, bool PrintFirstDiscrepancy) const;
                                    
   //data type/range helpers       
-  PelType getMaxPelValue() const { if constexpr (std::is_integral_v<PelType>) { return (PelType)xBitDepth2MaxValue(m_BitDepth);} else { return (PelType)1.0; } }
-  PelType getMidPelValue() const { if constexpr (std::is_integral_v<PelType>) { return (PelType)xBitDepth2MidValue(m_BitDepth);} else { return (PelType)0.5; } }
-  PelType getMinPelValue() const { return (PelType)0; }
+  T getMaxPelValue() const { if constexpr (std::is_integral_v<PelType>) { return (PelType)xBitDepth2MaxValue(m_BitDepth);} else { return (PelType)1.0; } }
+  T getMidPelValue() const { if constexpr (std::is_integral_v<PelType>) { return (PelType)xBitDepth2MidValue(m_BitDepth);} else { return (PelType)0.5; } }
+  T getMinPelValue() const { return (PelType)0; }
 
   //access picture data
-  inline int32          getStride(                ) const { return m_Stride; }
-  inline int32          getPitch (                ) const { return 1       ; }  
-  inline PelType*       getAddr  (                )       { return m_Origin; } 
-  inline const PelType* getAddr  (                ) const { return m_Origin; }
-  inline int32          getOffset(int32V2 Position) const { return Position.getY() * m_Stride + Position.getX(); }
-  inline PelType*       getAddr  (int32V2 Position)       { return getAddr() + getOffset(Position); }
-  inline const PelType* getAddr  (int32V2 Position) const { return getAddr() + getOffset(Position); }
+  inline int32    getStride (                ) const { return m_Stride; }
+  inline int32    getPitch  (                ) const { return 1       ; }  
+  inline T*       getAddr   (                )       { return m_Origin; } 
+  inline const T* getAddr   (                ) const { return m_Origin; }
+  inline int32    getOffset (int32V2 Position) const { return Position.getY() * m_Stride + Position.getX(); }
+  inline T*       getAddr   (int32V2 Position)       { return m_Origin + getOffset(Position); }
+  inline const T* getAddr   (int32V2 Position) const { return m_Origin + getOffset(Position); }
+  inline T*       getRowAddr(int32   y       )       { return m_Origin + y * m_Stride; }
+  inline const T* getRowAddr(int32   y       ) const { return m_Origin + y * m_Stride; }
   //slow pel access
-  inline PelType&       accessPel(int32V2 Position)       { return *(getAddr() + getOffset(Position)); }
-  inline const PelType& accessPel(int32V2 Position) const { return *(getAddr() + getOffset(Position)); }
-  inline PelType&       accessPel(int32   Offset  )       { return *(getAddr() + Offset); }
-  inline const PelType& accessPel(int32   Offset  ) const { return *(getAddr() + Offset); }
+  inline T&       accessPel(int32V2 Position)       { return *(getAddr() + getOffset(Position)); }
+  inline const T& accessPel(int32V2 Position) const { return *(getAddr() + getOffset(Position)); }
+  inline T&       accessPel(int32   Offset  )       { return *(getAddr() + Offset); }
+  inline const T& accessPel(int32   Offset  ) const { return *(getAddr() + Offset); }
 
   //low level buffer modification / access - dangerous
-  inline int32          getBuffNumPels() const { return m_BuffCmpNumPels ; }
-  inline int32          getBuffSize   () const { return m_BuffCmpNumBytes; }
-  inline PelType*       getBuffer     ()       { return m_Buffer; }
-  inline const PelType* getBuffer     () const { return m_Buffer; }  
-         bool           bindBuffer    (PelType*  Buffer);
-         PelType*       unbindBuffer  (                );
-         bool           swapBuffer    (PelType*& Buffer);
-         bool           swapBuffer    (xPlane* TheOther);              
+  inline int64    getBuffNumPels() const { return m_BuffCmpNumPels ; }
+  inline int64    getBuffSize   () const { return m_BuffCmpNumBytes; }
+  inline T*       getBuffer     ()       { return m_Buffer; }
+  inline const T* getBuffer     () const { return m_Buffer; }
+         bool     bindBuffer    (T*  Buffer      );
+         T*       unbindBuffer  (                );
+         bool     swapBuffer    (T*& Buffer      );
+         bool     swapBuffer    (xPlane* TheOther);              
 
   //access picture data for specific block unit - TODO - to check
   //PelType*    getBlockPelAddr      (int32 BlockWidth,     int32 BlockHeight,     int32 BlockPosX, int32 BlockPosY) { return m_Origin + ( BlockPosY * m_Stride   * BlockHeight    ) + (BlockPosX  * BlockWidth    ); }
@@ -93,6 +98,144 @@ public:
   //PelType*       getBlockPelAddr    (int32V2 BlockPos, int32V2 BlockSize    )       { return getAddr() + getBlockPelOffset    (BlockPos, BlockSize    ); }
   //const PelType* getBlockPelAddr    (int32V2 BlockPos, int32V2 BlockSize    ) const { return getAddr() + getBlockPelOffset    (BlockPos, BlockSize    ); }
 };
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// xPlane - general functions
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+template <typename PelType> void xPlane<PelType>::create(int32V2 Size, int32 BitDepth, int32 Margin)
+{
+  if constexpr(std::is_integral_v<PelType>) { assert(BitDepth!=0); }
+  xInit(Size, BitDepth, Margin, 1, sizeof(PelType));
+  
+  m_Buffer = (PelType*)xMemory::xAlignedMallocPageAuto(m_BuffCmpNumBytes);
+  m_Origin = m_Buffer + Margin*m_Stride + Margin;
+  if(m_Buffer == nullptr) { xErrMsg::printError(fmt::format("TERRIBLE ERROR --> memory allocation failed in xPlane<PelType>::create while using xMemory::xAlignedMallocPageAuto({})", m_BuffCmpNumBytes)); abort(); }
+}
+template <typename PelType> void xPlane<PelType>::destroy()
+{
+  if(m_Buffer != nullptr) { xMemory::xAlignedFree(m_Buffer); m_Buffer = nullptr; }
+  m_Origin = nullptr;
+  xUnInit();
+}
+template <typename PelType> void xPlane<PelType>::clear()
+{
+  std::memset((void*)m_Buffer, 0, m_BuffCmpNumBytes);
+  m_POC              = NOT_VALID;  
+  m_Timestamp        = NOT_VALID;  
+  m_IsMarginExtended = false;
+}
+template <typename PelType> void xPlane<PelType>::copy(const xPlane* Src)
+{
+  assert(Src!=nullptr && isCompatible(Src));
+  memcpy(m_Buffer, Src->m_Buffer, m_BuffCmpNumBytes);
+  m_POC              = Src->m_POC             ;
+  m_Timestamp        = Src->m_Timestamp       ;
+  m_IsMarginExtended = Src->m_IsMarginExtended;
+}
+template <typename PelType> void xPlane<PelType>::zero()
+{
+  std::memset((void*)m_Buffer, 0, m_BuffCmpNumBytes);
+  m_IsMarginExtended = true;
+}
+template <typename PelType> void xPlane<PelType>::fill(PelType Value)
+{
+  xPixelOps::Fill<PelType>(m_Buffer, Value, m_BuffCmpNumPels);
+  m_IsMarginExtended = true;
+}
+template <typename PelType> bool xPlane<PelType>::check(const std::string& Name) const
+{
+  if constexpr(std::is_same_v<PelType, uint16>)
+  {
+    bool Correct = xPixelOps::CheckIfInRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth);
+    if(!Correct)
+    {
+      fmt::print("FILE BROKEN {}\n", Name);
+      std::string Msg = xPixelOps::FindOutOfRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth, -1);
+      fmt::print("{}", Msg);
+    }
+    return Correct;
+  }
+  else
+  {
+    assert(0); return false;
+  }
+}
+template <typename PelType> void xPlane<PelType>::conceal()
+{
+  if constexpr(std::is_same_v<PelType, uint16>)
+  {
+    xPixelOps::ClipToRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth);
+    m_IsMarginExtended = false;
+  }
+  else
+  {
+    assert(0);
+  }
+}
+template <typename PelType> void xPlane<PelType>::extend()
+{
+  if constexpr(std::is_same_v<PelType, uint16>)
+  {
+    xPixelOps::ExtendMargin(m_Origin, m_Stride, m_Width, m_Height, m_Margin);
+  }
+  else
+  {
+    assert(0); 
+  }
+}
+template <typename PelType> bool xPlane<PelType>::equal(const xPlane* Ref, bool PrintFirstDiscrepancy) const
+{
+  assert(Ref != nullptr && isCompatible(Ref));
+  if constexpr(std::is_same_v<PelType, uint16>)
+  {
+    bool Equal = xPixelOps::CompareEqual(Ref->getAddr(), m_Origin, Ref->getStride(), m_Stride, m_Width, m_Height);
+    if(PrintFirstDiscrepancy && !Equal)
+    {
+      fmt::print("ERROR current plane values differs from reference\n");
+      std::string Msg = xPixelOps::FindOutOfRange(m_Origin, m_Stride, m_Width, m_Height, m_BitDepth, 1);
+      fmt::print("{}", Msg);
+    }
+    return Equal;
+  }
+  else
+  {
+    assert(0);
+    return false;
+  }
+}
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// xPlane - low level buffer modification / access - dangerous
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+template <typename PelType> bool xPlane<PelType>::bindBuffer(PelType* Buffer)
+{
+  assert(Buffer!=nullptr); if(m_Buffer) { return false; }
+  m_Buffer = Buffer;
+  m_Origin = m_Buffer + (m_Margin * m_Stride) + m_Margin;
+  return true;
+}
+template <typename PelType> PelType* xPlane<PelType>::unbindBuffer()
+{
+  if(m_Buffer==nullptr) { return nullptr; }
+  PelType* Tmp = m_Buffer;
+  m_Buffer = nullptr;
+  m_Origin = nullptr;
+  return Tmp;
+}
+template <typename PelType> bool xPlane<PelType>::swapBuffer(PelType*& Buffer)
+{
+  assert(Buffer != nullptr); if(m_Buffer==nullptr) { return false; }
+  std::swap(m_Buffer, Buffer);
+  m_Origin = m_Buffer + (m_Margin * m_Stride) + m_Margin;
+  return true;
+}
+template <typename PelType> bool xPlane<PelType>::swapBuffer(xPlane* TheOther)
+{
+  assert(TheOther != nullptr); if(TheOther==nullptr || !isCompatible(TheOther)) { return false; }
+  std::swap(this->m_Buffer, TheOther->m_Buffer);
+  this    ->m_Origin = this    ->m_Buffer + (this    ->m_Margin * this    ->m_Stride) + this    ->m_Margin;
+  TheOther->m_Origin = TheOther->m_Buffer + (TheOther->m_Margin * TheOther->m_Stride) + TheOther->m_Margin;
+  return true;
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // xPlane - instantiation for base types
@@ -123,13 +266,13 @@ public:
 protected:
   //Unit creation parameters
   int32V2    m_Size;
-  int32      m_Margin;
   int32      m_BitDepth;
+  int32      m_Margin;  
 
 public:
-  void       create         (int32V2 Size, int32 Margin, int32 BitDepth, uintSize InitSize = 0, uintSize SizeLimit = std::numeric_limits<uintSize>::max());
-  void       recreate       (int32V2 Size, int32 Margin, int32 BitDepth, uintSize InitSize = 0, uintSize SizeLimit = std::numeric_limits<uintSize>::max()) { destroy(); create(Size, Margin, BitDepth, InitSize, SizeLimit); }
-  void       destroy        () { while(!m_Buffer.empty()) { xDestroyUnit(); } }
+  void       create  (int32V2 Size, int32 BitDepth,int32 Margin, uintSize InitSize = 0, uintSize SizeLimit = std::numeric_limits<uintSize>::max());
+  void       recreate(int32V2 Size, int32 BitDepth,int32 Margin, uintSize InitSize = 0, uintSize SizeLimit = std::numeric_limits<uintSize>::max()) { destroy(); create(Size, BitDepth, Margin, InitSize, SizeLimit); }
+  void       destroy () { while(!m_Buffer.empty()) { xDestroyUnit(); } }
              
   xPlane<T>* borrow  (                ) { return(xPlane<T>*)xBorrow(); }
   void       giveback(xPlane<T>* Plane) { xGiveback((xPicCommon*)Plane); }
@@ -140,6 +283,38 @@ protected:
   virtual void xCreateNewUnit () final;
   virtual void xDestroyUnit   () final;
 };
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+template <typename PelType> void xPlaneRental<PelType>::create(int32V2 Size, int32 Margin, int32 BitDepth, uintSize InitSize, uintSize SizeLimit)
+{
+  m_Mutex.lock();
+  m_Size         = Size;
+  m_Margin       = Margin;
+  m_BitDepth     = BitDepth;
+  m_CreatedUnits = 0;
+  m_SizeLimit    = SizeLimit;
+
+  for(uintSize i=0; i<InitSize; i++) { xCreateNewUnit(); }
+  m_Mutex.unlock();
+}
+template <typename PelType> void xPlaneRental<PelType>::xCreateNewUnit()
+{
+  xPlane<PelType>* Tmp = new xPlane<PelType>;
+  Tmp->create(m_Size, m_BitDepth, m_Margin);
+  m_Buffer.push_back(Tmp);
+  m_CreatedUnits++;
+}
+template <typename PelType> void xPlaneRental<PelType>::xDestroyUnit()
+{
+  if(!m_Buffer.empty())
+  {
+    xPlane<PelType>* Tmp = (xPlane<PelType>*)m_Buffer.back();
+    m_Buffer.pop_back();
+    Tmp->destroy();
+    delete Tmp;
+  }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // xPlaneRental - instantiation for base types

@@ -13,10 +13,11 @@
 #include "xIVPSNR.h"
 #include "xSSIM.h"
 #include "xCfgINI.h"
+#include "xErrMsg.h"
 #include "xFmtScn.h"
 #include "xMemory.h"
 #include "xMiscUtilsCORE.h"
-#include "xMathUtils.h"
+#include "xKBNS.h"
 #include <math.h>
 #include <fstream>
 #include <time.h>
@@ -49,40 +50,45 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //parsing configuration
   AppQMIV.registerCmdParams();
   bool CfgLoadResult = AppQMIV.loadConfiguration(argc, const_cast<const char**>(argv));
-  if(!CfgLoadResult) { xCfgINI::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
+  if(!CfgLoadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
   bool CfgReadResult = AppQMIV.readConfiguration();
-  if(!CfgReadResult) { xCfgINI::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
+  if(!CfgReadResult) { xErrMsg::printError(AppQMIV.getErrorLog() + "\n\n", xAppQMIV::c_HelpString); return EXIT_FAILURE; }
   const int32 VerboseLevel = AppQMIV.getVerboseLevel();
 
   if(VerboseLevel >= 2)
   { 
-    fmt::print("WorkingDir = " + std::filesystem::current_path().string() + "\n\n");    
+    fmt::print("WorkingDir = {}\n\n", std::filesystem::current_path().string());    
     fmt::print("Commandline args:\n"); xCfgINI::printCommandlineArgs(argc, const_cast<const char**>(argv));
   }
 
   //print compile time setup
   if (VerboseLevel >= 1)
   {
-    fmt::print(xMiscUtilsCORE::formatCompileTimeSetup());
+    fmt::print("{}", xMiscUtilsCORE::formatCompileTimeSetup());
     fmt::print("USE_RUNTIME_CMPWEIGHTS = {}\n", xc_USE_RUNTIME_CMPWEIGHTS);
     fmt::print("\n");
+  }
+
+  if(VerboseLevel >= 2)
+  {
+    fmt::print("{}\n", xMiscUtilsCORE::formatBuildInfo());
   }
 
   //print config
   if(VerboseLevel >= 1) { fmt::print("{}\n", AppQMIV.formatConfiguration()); }
 
   //validate file names against input parameters
-  eRes ValidFilesRes = AppQMIV.validateInputFiles();
-  if(ValidFilesRes == eRes::Warning) { xCfgINI::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); }
-  if(ValidFilesRes == eRes::Error  ) { xCfgINI::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); return EXIT_FAILURE; }
+  eAppRes ValidFilesRes = AppQMIV.validateInputFiles();
+  if(ValidFilesRes == eAppRes::Warning) { xErrMsg::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); }
+  if(ValidFilesRes == eAppRes::Error  ) { xErrMsg::printError(std::string("PARAMETERS WARNING: Invalid parameters\n") + AppQMIV.getErrorLog()); return EXIT_FAILURE; }
 
   //print configuration warnings
   std::string ConfigWarnings = AppQMIV.formatWarnings();
-  if(!ConfigWarnings.empty()) { fmt::print(ConfigWarnings); }
+  if(!ConfigWarnings.empty()) { fmt::print("{}", ConfigWarnings); }
 
   //hardware concurency
   AppQMIV.setupMultithreading();
-  if(VerboseLevel >= 1) { fmt::print(AppQMIV.formatMultithreading() + "\n"); }
+  if(VerboseLevel >= 1) { fmt::print("{}\n", AppQMIV.formatMultithreading()); }
 
   //spacer
   fmt::print("\n\n\n");
@@ -93,9 +99,8 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //===================================================================================================================
   if(VerboseLevel >= 2) { fmt::print("Initializing:\n"); }
 
-  eRes SeqRes = AppQMIV.setupSeqAndBuffs();
-  if(SeqRes == eRes::Error) { return EXIT_FAILURE; }
-
+  eAppRes SeqRes = AppQMIV.setupSeqAndBuffs();
+  if(SeqRes == eAppRes::Error) { return EXIT_FAILURE; }
 
   AppQMIV.createProcessors();
 
@@ -103,14 +108,14 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   //running
   //===================================================================================================================
   tTimePoint PrcBeg = tClock::now();
-  eRes ClcRes = AppQMIV.processAllFrames();
-  if(ClcRes == eRes::Error) { return EXIT_FAILURE; }
+  eAppRes ClcRes = AppQMIV.processAllFrames();
+  if(ClcRes == eAppRes::Error) { return EXIT_FAILURE; }
   tTimePoint PrcEnd = tClock::now();
 
   //===================================================================================================================
   //finalizing
   //===================================================================================================================
-  if(VerboseLevel >= 1) { fmt::print("\n"); fmt::print(AppQMIV.calibrateTimeStamp()); }
+  if(VerboseLevel >= 1) { fmt::print("\n"); fmt::print("{}", AppQMIV.calibrateTimeStamp()); }
   fmt::print("\n\n");
   AppQMIV.combineFrameStats  ();
   AppQMIV.ceaseSeqAndBuffs   ();
@@ -125,7 +130,7 @@ int32 APP_MAIN(int argc, char *argv[], char* /*envp*/[])
   }
 
   //printout results
-  fmt::print(AppQMIV.formatResultsStdOut());
+  fmt::print("{}", AppQMIV.formatResultsStdOut());
   fmt::print("\n");
   tTimePoint AppEnd = tClock::now();
   fmt::print("TotalProcessingTime  = {:.3f} s\n", std::chrono::duration_cast<tDurationS>(PrcEnd - PrcBeg).count());

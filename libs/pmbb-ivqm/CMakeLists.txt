@@ -3,41 +3,22 @@ cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 #=========================================================================================================================================
 # library PMBB-IVQM - Poznan-Multimedia-Building-Blocks - Immervive Video Quality Metrics
 #=========================================================================================================================================
-set(LIB_PMBB_IVQM_NAME "pmbb-ivqm")
-set(LIB_PMBB_IVQM_NAME "pmbb-ivqm" PARENT_SCOPE)
+set(LIB_CURRENT_NAME "pmbb-ivqm")
+set(LIB_DEPENDENCIES "${LIB_PMBB_BASE_NAME}" "${LIB_PMBB_CORE_NAME}")
 
-if(NOT PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES)
+set(LIB_PMBB_IVQM_NAME "${LIB_CURRENT_NAME}")
+set(LIB_PMBB_IVQM_NAME "${LIB_CURRENT_NAME}" PARENT_SCOPE)
 
-  project(${LIB_PMBB_IVQM_NAME})
-  add_library(${PROJECT_NAME} OBJECT "")
-  include(./TargetSources.cmake)  
-  target_compile_features   (${PROJECT_NAME} PRIVATE cxx_std_17)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${fmtlib_SOURCE_DIR}/include)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_BASE_NAME}_SOURCE_DIR}/src)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_CORE_NAME}_SOURCE_DIR}/src)
-  
+if(NOT PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES)  
+  PMBB_setup_lib_common_default()
 else() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES
-
-  foreach(MFL ${LIST_MFL})
-    determine_compiler_settings_for_MFL(MFL_CO MFL_CD MFL_CN ${MFL})
-    project("${LIB_PMBB_IVQM_NAME}_${MFL_CN}")
-
-    add_library(${PROJECT_NAME} OBJECT "")
-    include(./TargetSources.cmake)        
-    target_compile_features   (${PROJECT_NAME} PRIVATE cxx_std_17)
-    target_compile_options    (${PROJECT_NAME} PRIVATE ${MFL_CO})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE ${MFL_CD})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE "PMBB_NAMESPACE=PMBB::${MFL_CN}")
-    target_include_directories(${PROJECT_NAME} PRIVATE ${fmtlib_SOURCE_DIR}/include)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_BASE_NAME}_SOURCE_DIR}/src)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${${LIB_PMBB_CORE_NAME}_SOURCE_DIR}/src)
-  endforeach()
-
-  project("${LIB_PMBB_IVQM_NAME}")
-  add_library(${PROJECT_NAME} INTERFACE)
-  foreach(MFL ${LIST_MFL})
-    determine_compile_name_for_MFL(MFL_CN ${MFL})
-    target_link_libraries(${PROJECT_NAME} INTERFACE ${LIB_PMBB_IVQM_NAME}_${MFL_CN} $<TARGET_OBJECTS:${LIB_PMBB_IVQM_NAME}_${MFL_CN}>)
-  endforeach()
-  
+  PMBB_setup_lib_common_multiarch()
 endif() #PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES
+
+#=========================================================================================================================================
+# Testing can be enabled for non-PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES builds only
+#=========================================================================================================================================
+if(CMAKE_TESTING_ENABLED AND (NOT PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES))
+  set(LIST_TESTS "xSSIM" "xStructSim")
+  PMBB_setup_lib_test()
+endif()

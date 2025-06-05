@@ -124,7 +124,7 @@ bool xStream::seekR(int64 Position, eSeek SeekMode)
 {
   if(m_Stream == nullptr || !canRead()) { return false; }
   std::ios_base::seekdir SeekDir = (std::ios_base::seekdir)SeekMode;
-  reinterpret_cast<std::istream*>(m_Stream)->seekg(Position, SeekDir);
+  static_cast<std::istream*>(m_Stream)->seekg(Position, SeekDir);
   bool Result = m_Stream->good();
   if(!Result) { xPrintError(); }
   return Result;
@@ -133,7 +133,7 @@ bool xStream::seekW(int64 Position, eSeek SeekMode)
 {
   if(m_Stream == nullptr || !canWrite()) { return false; }
   std::ios_base::seekdir SeekDir = (std::ios_base::seekdir)SeekMode;
-  reinterpret_cast<std::ostream*>(m_Stream)->seekp(Position, SeekDir);
+  static_cast<std::ostream*>(m_Stream)->seekp(Position, SeekDir);
   bool Result = m_Stream->good();
   if(!Result) { xPrintError(); }
   return Result;

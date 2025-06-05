@@ -31,8 +31,8 @@ protected:
   int32   m_NumCmps          = NOT_VALID;
 
   int32   m_BytesPerSample   = NOT_VALID;
-  int32   m_BuffCmpNumPels   = NOT_VALID; //size of picture buffer (including margin) in number of PELs
-  int32   m_BuffCmpNumBytes  = NOT_VALID; //size of picture buffer (including margin) in bytes
+  int64   m_BuffCmpNumPels   = NOT_VALID; //size of picture buffer (including margin) in number of PELs
+  int64   m_BuffCmpNumBytes  = NOT_VALID; //size of picture buffer (including margin) in bytes
 
   int64   m_POC              = NOT_VALID;
   int64   m_Timestamp        = NOT_VALID;
@@ -98,6 +98,8 @@ protected:
   uintSize   m_SizeLimit;
 
 public:
+  virtual    ~xRentalCommon() {}
+
   void       setSizeLimit(uintSize SizeLimit) { m_SizeLimit = SizeLimit; while(m_Buffer.size() > SizeLimit) { xDestroyUnit(); } }
 
   uintSize   getLoad        () { return m_Buffer.size(); }

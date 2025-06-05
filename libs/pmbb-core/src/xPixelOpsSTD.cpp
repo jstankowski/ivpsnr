@@ -282,6 +282,29 @@ int32 xPixelOpsSTD::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
 
   return NumNonZero;
 }
+uint64 xPixelOpsSTD::CountEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
+{
+  uint64 NumEqual = 0;
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++) { if(Tst[x] == Ref[x]) { NumEqual++; } }
+    Tst += TstStride;
+    Ref += RefStride;
+  }
+  return NumEqual;
+}
+uint64 xPixelOpsSTD::CountEqualMask(const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height)
+{
+  uint64 NumEqual = 0;
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++) { if(Msk[x] && Tst[x] == Ref[x]) { NumEqual++; } }
+    Tst += TstStride;
+    Ref += RefStride;
+    Msk += MskStride;
+  }
+  return NumEqual;
+}
 bool xPixelOpsSTD::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
 {
   for(int32 y = 0; y < Height; y++)

@@ -8,35 +8,41 @@
 #include "xPixelOps.h"
 #include "xFile.h"
 #include "xMemory.h"
+#include "xErrMsg.h"
 #include <cassert>
 #include <cstring>
 
 namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
-
-bool xSeqBase::isModeAllowed(eMode OpMode)
+// xSeqFile
+//===============================================================================================================================================================================================================
+bool xSeqFile::isModeAllowed(eMode OpMode) const 
 {
   switch(OpMode)
   {
-    case eMode::Read  : return allowsRead (); break;
-    case eMode::Write : return allowsWrite(); break;
-    case eMode::Append: return allowsRead (); break;
+    case eMode::Read  : return allowsRead  (); break;
+    case eMode::Write : return allowsWrite (); break;
+    case eMode::Append: return allowsAppend(); break;
     default: return false;
   }
 }
-xSeqBase::tResult xSeqBase::openFile(tCSR FileName, eMode OpMode)
+xSeqFile::tResult xSeqFile::openFile(tCSR FileName, eMode OpMode)
 {
   if(!isModeAllowed(OpMode)) { return eRetv::NotImplemented; }
 
   m_OpMode = OpMode;
   return xBackendOpen(FileName, OpMode);
 }
-xSeqBase::tResult xSeqBase::closeFile()
+xSeqFile::tResult xSeqFile::closeFile()
 {
   return xBackendClose();
 }
-xSeqBase::tResult xSeqBase::readFrame(xPicP* Pic)
+
+//===============================================================================================================================================================================================================
+// xSeqCommon
+//===============================================================================================================================================================================================================
+xSeqCommon::tResult xSeqPic::readFrame(xPicP* Pic)
 {
   if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return { eRetv::Error, "OpMode does not allow Read"}; }
@@ -49,12 +55,13 @@ xSeqBase::tResult xSeqBase::readFrame(xPicP* Pic)
   bool Unpacked = xUnpackFrame(Pic);
   if(!Unpacked) { return eRetv::Error; }
 
-  //update state
+  //set POC & update state
+  Pic->setPOC(m_CurrFrameIdx);
   m_CurrFrameIdx += 1;
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::writeFrame(const xPicP* Pic)
+xSeqCommon::tResult xSeqPic::writeFrame(const xPicP* Pic)
 {
   if(m_OpMode != eMode::Write && m_OpMode != eMode::Append) { return { eRetv::Error, "OpMode does not allow Write" }; }
 
@@ -72,7 +79,8 @@ xSeqBase::tResult xSeqBase::writeFrame(const xPicP* Pic)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::readFrame(xPlane<uint8>* Plane)
+#if X_PMBB_SEQ_HAS_PLANE
+xSeqCommon::tResult xSeqPic::readFrame(xPlane<uint8>* Plane)
 {
   if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return { eRetv::Error, "OpMode does not allow Read" }; }
@@ -85,12 +93,13 @@ xSeqBase::tResult xSeqBase::readFrame(xPlane<uint8>* Plane)
   bool Unpacked = xUnpackFrame(Plane);
   if(!Unpacked) { return eRetv::Error; }
 
-  //update state
+  //set POC & update state
+  Plane->setPOC(m_CurrFrameIdx);
   m_CurrFrameIdx += 1;
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::writeFrame(const xPlane<uint8>* Plane)
+xSeqCommon::tResult xSeqPic::writeFrame(const xPlane<uint8>* Plane)
 {
   if(m_OpMode != eMode::Write && m_OpMode != eMode::Append) { return { eRetv::Error, "OpMode does not allow Write" }; }
 
@@ -108,7 +117,7 @@ xSeqBase::tResult xSeqBase::writeFrame(const xPlane<uint8>* Plane)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::readFrame(xPlane<uint16>* Plane)
+xSeqCommon::tResult xSeqPic::readFrame(xPlane<uint16>* Plane)
 {
   if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
   if(m_OpMode != eMode::Read) { return { eRetv::Error, "OpMode does not allow Read" }; }
@@ -121,12 +130,13 @@ xSeqBase::tResult xSeqBase::readFrame(xPlane<uint16>* Plane)
   bool Unpacked = xUnpackFrame(Plane);
   if(!Unpacked) { return eRetv::Error; }
 
-  //update state
+  //set POC & update state
+  Plane->setPOC(m_CurrFrameIdx);
   m_CurrFrameIdx += 1;
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::writeFrame(const xPlane<uint16>* Plane)
+xSeqCommon::tResult xSeqPic::writeFrame(const xPlane<uint16>* Plane)
 {
   if(m_OpMode != eMode::Write && m_OpMode != eMode::Append) { return { eRetv::Error, "OpMode does not allow Write" }; }
 
@@ -144,7 +154,49 @@ xSeqBase::tResult xSeqBase::writeFrame(const xPlane<uint16>* Plane)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::seekFrame(int32 FrameNumber)
+#endif //X_PMBB_SEQ_HAS_PLANE
+#if X_PMBB_SEQ_HAS_PICYUV
+xSeqCommon::tResult xSeqPic::readFrame(xPicYUV* Pic)
+{
+  if(m_OpMode == eMode::Read && m_CurrFrameIdx >= m_NumOfFrames) { return eRetv::EndOfFile; }
+  if(m_OpMode != eMode::Read) { return eRetv::Error; }
+  if(!Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat)) { return eRetv::WrongArg; }
+
+  //read frame
+  tResult Result = xBackendRead(m_Packed);
+  if(!Result) { return Result; }
+
+  //unpack frame
+  bool Unpacked = xUnpackFrame(Pic);
+  if(!Unpacked) { return eRetv::Error; }
+
+  //set POC & update state
+  Pic->setPOC(m_CurrFrameIdx);
+  m_CurrFrameIdx += 1;
+
+  return eRetv::Success;
+}
+xSeqCommon::tResult xSeqPic::writeFrame(const xPicYUV* Pic)
+{
+  if(m_OpMode != eMode::Write && m_OpMode != eMode::Append) { return eRetv::Error; }
+  if(!Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat)) { return eRetv::WrongArg; }
+
+  //pack frame
+  bool Packed = xPackFrame(Pic);
+  if(!Packed) { return eRetv::Error; }
+
+  //write frame
+  tResult Result = xBackendWrite(m_Packed);
+  if(!Result) { return Result; }
+
+  //update state
+  m_NumOfFrames  += 1;
+  m_CurrFrameIdx += 1;
+
+  return eRetv::Success;
+}
+#endif //X_PMBB_SEQ_HAS_PICYUV
+xSeqCommon::tResult xSeqPic::seekFrame(int32 FrameNumber)
 {
   if(m_OpMode == eMode::Read && FrameNumber >= m_NumOfFrames) { return eRetv::WrongArg; }
   if(m_OpMode != eMode::Read) { return eRetv::Error; }
@@ -158,7 +210,7 @@ xSeqBase::tResult xSeqBase::seekFrame(int32 FrameNumber)
 
   return eRetv::Success;
 }
-xSeqBase::tResult xSeqBase::skipFrame(int32 NumFrames)
+xSeqCommon::tResult xSeqPic::skipFrame(int32 NumFrames)
 {
   int32 NewFrameNumber = m_CurrFrameIdx + NumFrames;
   if(m_OpMode == eMode::Read && NewFrameNumber >= m_NumOfFrames) { return eRetv::WrongArg; }
@@ -176,7 +228,7 @@ xSeqBase::tResult xSeqBase::skipFrame(int32 NumFrames)
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-bool xSeqBase::xUnpackFrame(xPicP* Pic)
+bool xSeqPic::xUnpackFrame(xPicP* Pic)
 {
   uint16* PtrLm      = Pic->getAddr  (eCmp::LM);
   uint16* PtrCb      = Pic->getAddr  (eCmp::CB);
@@ -196,7 +248,7 @@ bool xSeqBase::xUnpackFrame(xPicP* Pic)
 
     if(m_ChromaFormat == eCrF::CF420)
     {
-      const int32 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 2;
+      const int64 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 2;
       const int32 ChromaFileStride      = Width >> 1;
       if(m_BytesPerSample == 1)
       {
@@ -213,7 +265,7 @@ bool xSeqBase::xUnpackFrame(xPicP* Pic)
     }
     else if(m_ChromaFormat == eCrF::CF422)
     {
-      const int32 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 1;
+      const int64 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 1;
       const int32 ChromaFileStride      = Width >> 1;
       if(m_BytesPerSample == 1)
       {
@@ -247,7 +299,7 @@ bool xSeqBase::xUnpackFrame(xPicP* Pic)
   }
   return true;
 }
-bool xSeqBase::xPackFrame(const xPicP* Pic)
+bool xSeqPic::xPackFrame(const xPicP* Pic)
 {
   const uint16* PtrLm  = Pic->getAddr  (eCmp::LM);
   const uint16* PtrCb  = Pic->getAddr  (eCmp::CB);
@@ -266,7 +318,7 @@ bool xSeqBase::xPackFrame(const xPicP* Pic)
     uint8* ChromaPtr = m_Packed + m_PackedCmpNumBytes;
     if(m_ChromaFormat == eCrF::CF420)
     {
-      const int32 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 2;
+      const int64 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 2;
       const int32 ChromaFileStride      = Width >> 1;
       if(m_BytesPerSample == 1)
       {
@@ -283,7 +335,7 @@ bool xSeqBase::xPackFrame(const xPicP* Pic)
     }
     else if(m_ChromaFormat == eCrF::CF422)
     {
-      const int32 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 1;
+      const int64 ChromaFileCmpNumBytes = m_PackedCmpNumBytes >> 1;
       const int32 ChromaFileStride      = Width >> 1;
       if(m_BytesPerSample == 1)
       {
@@ -317,7 +369,8 @@ bool xSeqBase::xPackFrame(const xPicP* Pic)
   }
   return true;
 }
-bool xSeqBase::xUnpackFrame(xPlane<uint8>* Pic)
+#if X_PMBB_SEQ_HAS_PLANE
+bool xSeqPic::xUnpackFrame(xPlane<uint8>* Pic)
 {
   uint8*      PtrLm  = Pic->getAddr  ();
   const int32 Stride = Pic->getStride();
@@ -329,7 +382,7 @@ bool xSeqBase::xUnpackFrame(xPlane<uint8>* Pic)
 
   return true;
 }
-bool xSeqBase::xPackFrame(const xPlane<uint8>* Pic)
+bool xSeqPic::xPackFrame(const xPlane<uint8>* Pic)
 {
   const uint8* PtrLm  = Pic->getAddr  ();
   const int32  Stride = Pic->getStride();
@@ -341,14 +394,14 @@ bool xSeqBase::xPackFrame(const xPlane<uint8>* Pic)
 
   //process chroma
   uint8* ChromaPtr = m_Packed + m_PackedCmpNumBytes;
-  int32  CromaNumPels = 0;
+  int64  CromaNumPels = 0;
 
   switch(m_ChromaFormat)
   {
     case eCrF::CF444: CromaNumPels = m_PackedCmpNumPels << 1; break;
     case eCrF::CF422: CromaNumPels = m_PackedCmpNumPels     ; break;
     case eCrF::CF420: CromaNumPels = m_PackedCmpNumPels >> 1; break;
-    case eCrF::CF400: CromaNumPels = 0                    ; break;
+    case eCrF::CF400: CromaNumPels = 0                      ; break;
     default: assert(0); return false;
   }
   if(CromaNumPels)
@@ -358,7 +411,7 @@ bool xSeqBase::xPackFrame(const xPlane<uint8>* Pic)
 
   return true;
 }
-bool xSeqBase::xUnpackFrame(xPlane<uint16>* Pic)
+bool xSeqPic::xUnpackFrame(xPlane<uint16>* Pic)
 {
   uint16* PtrLm      = Pic->getAddr  ();
   const int32 Stride = Pic->getStride();
@@ -371,7 +424,7 @@ bool xSeqBase::xUnpackFrame(xPlane<uint16>* Pic)
 
   return true;
 }
-bool xSeqBase::xPackFrame(const xPlane<uint16>* Pic)
+bool xSeqPic::xPackFrame(const xPlane<uint16>* Pic)
 {
   const uint16* PtrLm  = Pic->getAddr  ();
   const int32   Stride = Pic->getStride();
@@ -384,14 +437,14 @@ bool xSeqBase::xPackFrame(const xPlane<uint16>* Pic)
 
   //process chroma
   uint8* ChromaPtr = m_Packed + m_PackedCmpNumBytes;
-  int32  CromaNumPels = 0;
+  int64  CromaNumPels = 0;
 
   switch(m_ChromaFormat)
   {
     case eCrF::CF444: CromaNumPels = m_PackedCmpNumPels << 1; break;
     case eCrF::CF422: CromaNumPels = m_PackedCmpNumPels     ; break;
     case eCrF::CF420: CromaNumPels = m_PackedCmpNumPels >> 1; break;
-    case eCrF::CF400: CromaNumPels = 0                    ; break;
+    case eCrF::CF400: CromaNumPels = 0                      ; break;
     default: assert(0); return false;
   }
   if(CromaNumPels)
@@ -402,6 +455,51 @@ bool xSeqBase::xPackFrame(const xPlane<uint16>* Pic)
 
   return true;
 }
+#endif //X_PMBB_SEQ_HAS_PLANE
+#if X_PMBB_SEQ_HAS_PICYUV
+bool xSeqPic::xUnpackFrame(xPicYUV* Pic)
+{
+  bool IsCompatible = Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat);
+  assert(IsCompatible); if(!IsCompatible) { return false; }
+
+  const uint8* SrcPtr  = m_Packed;
+  int32        NumCmps = Pic->getNumCmps();
+  for(int32 c = 0; c < NumCmps; c++)
+  {
+    uint16* DstPtr     = Pic->getAddr  ((eCmp)c);
+    const int32 Stride = Pic->getStride((eCmp)c);
+    const int32 Width  = Pic->getWidth ((eCmp)c);
+    const int32 Height = Pic->getHeight((eCmp)c);
+    const int32 Offset = Width * Height * m_BytesPerSample;
+    if(m_BytesPerSample == 1) { xPixelOps::Cvt (DstPtr, SrcPtr           , Stride, Width, Width, Height); }
+    else                      { xPixelOps::Copy(DstPtr, (uint16*)(SrcPtr), Stride, Width, Width, Height); }
+    SrcPtr += Offset;
+  }
+
+  return true;
+}
+bool xSeqPic::xPackFrame(const xPicYUV* Pic)
+{
+  bool IsCompatible = Pic->isCompatible(m_Size, m_BitDepth, m_ChromaFormat);
+  assert(IsCompatible); if(!IsCompatible) { return false; }
+
+  uint8* DstPtr  = m_Packed;
+  int32  NumCmps = Pic->getNumCmps();
+  for(int32 c = 0; c < NumCmps; c++)
+  {
+    const uint16* SrcPtr = Pic->getAddr  ((eCmp)c);
+    const int32   Stride = Pic->getStride((eCmp)c);
+    const int32   Width  = Pic->getWidth ((eCmp)c);
+    const int32   Height = Pic->getHeight((eCmp)c);
+    const int32   Offset = Width * Height * m_BytesPerSample;
+    if(m_BytesPerSample == 1) { xPixelOps::Cvt (DstPtr           , SrcPtr, Width, Stride, Width, Height); }
+    else                      { xPixelOps::Copy((uint16*)(DstPtr), SrcPtr, Width, Stride, Width, Height); }
+    DstPtr += Offset;
+  }
+
+  return true;
+}
+#endif //X_PMBB_SEQ_HAS_PICYUV
 
 //===============================================================================================================================================================================================================
 
@@ -412,7 +510,7 @@ void xSeq::create(int32V2 Size, int32 BitDepth, eCrF ChromaFormat)
   m_BytesPerSample = m_BitDepth <= 8 ? 1 : 2;
   m_ChromaFormat   = ChromaFormat;
 
-  m_PackedCmpNumPels  = m_Size.getMul();
+  m_PackedCmpNumPels  = (int64)m_Size.getX() * (int64)m_Size.getY();
   m_PackedCmpNumBytes = m_PackedCmpNumPels * m_BytesPerSample;
 
   switch(m_ChromaFormat)
@@ -425,6 +523,7 @@ void xSeq::create(int32V2 Size, int32 BitDepth, eCrF ChromaFormat)
   }
 
   m_Packed = (uint8*)xMemory::xAlignedMallocPageAuto(m_PackedImgNumBytes);
+  if(m_Packed == nullptr) { xErrMsg::printError(fmt::format("TERRIBLE ERROR --> memory allocation failed in xSeq::create while using xMemory::xAlignedMallocPageAuto({})", m_PackedImgNumBytes)); abort(); }
 }
 void xSeq::destroy()
 {
@@ -439,8 +538,7 @@ void xSeq::destroy()
   m_PackedCmpNumPels  = NOT_VALID;
   m_PackedCmpNumBytes = NOT_VALID;
 
-  if(m_Packed) { xMemory::xAlignedFree(m_Packed); m_Packed = nullptr; }
-
+  if(m_Packed) { xMemory::xAlignedFreeNull(m_Packed); }
 }
 xSeq::tResult xSeq::bindStream(xStream* Stream, const eMode OpMode)
 {
@@ -502,14 +600,13 @@ xSeq::tResult xSeq::xBackendClose()
   m_CurrFrameIdx = NOT_VALID;
 
   return eRetv::Success;
-
 }
 xSeq::tResult xSeq::xBackendRead(uint8* PackedFrame)
 {
   bool ReadOK = m_Stream->read(PackedFrame, m_PackedImgNumBytes);
   return ReadOK ? eRetv::Success : eRetv::Error;
 }
-xSeq::tResult xSeq::xBackendWrite(uint8* PackedFrame)
+xSeq::tResult xSeq::xBackendWrite(const uint8* PackedFrame)
 {
   bool WriteOK = m_Stream->write(PackedFrame, m_PackedImgNumBytes);
   if(!WriteOK) { return eRetv::Error; }

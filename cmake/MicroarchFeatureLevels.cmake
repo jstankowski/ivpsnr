@@ -28,21 +28,26 @@ function(determine_compiler_settings_for_MFL COMPILE_OPTIONS COMPILE_DEFINITIONS
   endif()
   
   #check if MFL (Microarchitecture Feature Level) is correct
-  if(NOTMFL IN_LIST LIST_MICROARCH_FEATURE_LEVELS_ALL)
+  if(NOT MFL IN_LIST LIST_MICROARCH_FEATURE_LEVELS_ALL)
     message(SEND_ERROR "Wrong MFL=${MFL}")
     return()
   endif()
   
-  #GCC >= 11.0
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0"))
-    set(COMPILE_OPT "-march=${MFL}")
+  #GCC >= 11.0 or CLANG >= 12.0
+  if(((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" ) AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0"))
+   OR ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")))
+    if    (MFL STREQUAL "x86-64"   )
+      set(COMPILE_OPT "-march=x86-64")
+    elseif(MFL STREQUAL "x86-64-v2")
+      set(COMPILE_OPT "-march=x86-64-v2")
+    elseif(MFL STREQUAL "x86-64-v3")
+      set(COMPILE_OPT "-march=x86-64-v3" "-mpclmul") # assume all AVX2 capable CPUs have CLMUL
+    elseif(MFL STREQUAL "x86-64-v4")
+      set(COMPILE_OPT "-march=x86-64-v4" "-mpclmul") # assume all AVX512 capable CPUs have CLMUL
+    endif()
+    #set(COMPILE_OPT "-march=${MFL}")
     set(COMPILE_DEF "")
    
-  #CLANG >= 12.0
-  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0"))
-    set(COMPILE_OPT "-march=${MFL}")
-    set(COMPILE_DEF "")
-  
   #older GCC or CLANG
   elseif((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     if    (MFL STREQUAL "x86-64"   )
@@ -50,38 +55,32 @@ function(determine_compiler_settings_for_MFL COMPILE_OPTIONS COMPILE_DEFINITIONS
     elseif(MFL STREQUAL "x86-64-v2")
       set(COMPILE_OPT "-march=nehalem")
     elseif(MFL STREQUAL "x86-64-v3")
-      set(COMPILE_OPT "-march=haswell")
+      set(COMPILE_OPT "-march=haswell" "-mpclmul") # assume all AVX2 capable CPUs have CLMUL
     elseif(MFL STREQUAL "x86-64-v4")
-      set(COMPILE_OPT "-march=skylake-avx512")
+      set(COMPILE_OPT "-march=skylake-avx512" "-mpclmul") # assume all AVX2 capable CPUs have CLMUL
     endif()
     set(COMPILE_DEF "")
   
   #MSVC
   elseif(MSVC)
     if    (MFL STREQUAL "x86-64"   )
-      set(COMPILE_OPT "")
-    elseif(MFL STREQUAL "x86-64-v2")
-      set(COMPILE_OPT "")
-    elseif(MFL STREQUAL "x86-64-v3")
-      set(COMPILE_OPT "/arch:AVX2")
-    elseif(MFL STREQUAL "x86-64-v4")
-      set(COMPILE_OPT "/arch:AVX512")
-    endif()
-    
-    if    (MFL STREQUAL "x86-64"   )
+      set(COMPILE_OPT "/arch:SSE2")
       set(COMPILE_DEF "__SSE__" "__SSE2__")
     elseif(MFL STREQUAL "x86-64-v2")
+      set(COMPILE_OPT "/arch:SSE4.2")
       set(COMPILE_DEF "__SSE__" "__SSE2__" "__SSE3__" "__SSSE3__" "__SSE4_1__" "__SSE4_2__")
     elseif(MFL STREQUAL "x86-64-v3")
+      set(COMPILE_OPT "/arch:AVX2")
       set(COMPILE_DEF "__SSE__" "__SSE2__" "__SSE3__" "__SSSE3__" "__SSE4_1__" "__SSE4_2__")
     elseif(MFL STREQUAL "x86-64-v4")
+      set(COMPILE_OPT "/arch:AVX512")
       set(COMPILE_DEF "__SSE__" "__SSE2__" "__SSE3__" "__SSSE3__" "__SSE4_1__" "__SSE4_2__")
     endif()
-  
+
   #END  
   endif()
   
-  #conver to nice name
+  #convert to nice name
   if(MFL STREQUAL "x86-64")
     set(COMPILE_TAG "AMD64v1")
   else()  

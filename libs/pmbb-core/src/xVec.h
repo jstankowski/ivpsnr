@@ -294,6 +294,8 @@ public:
 
   inline tVec  getVecAbs () const { return tVec(xAbs(m_V[0]), xAbs(m_V[1]), xAbs(m_V[2]), xAbs(m_V[3])); }
   inline tVec  getVecPow2() const { return tVec(xPow2(m_V[0]), xPow2(m_V[1]), xPow2(m_V[2]), xPow2(m_V[3])); }
+  inline tVec  getVecReLU() const { return tVec(xMax(m_V[0], (XXX)0), xMax(m_V[1], (XXX)0), xMax(m_V[2], (XXX)0), xMax(m_V[3], (XXX)0)); }
+
   
   //terrible slow (since std::pow is slow) but sometimes usefull, defined only for floating point types
   //template <typename = typename std::enable_if_t<std::is_floating_point_v<XXX>>>

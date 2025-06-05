@@ -7,7 +7,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "../src/xCommonDefPMBB-BASE.h"
+#include "../src/xCommonDefBASE.h"
 #include "../src/xCfgINI.h"
 #include "../src/xString.h"
 

@@ -4,7 +4,7 @@
 */
 
 #include "xWeightedSpherically.h"
-#include "xMathUtils.h"
+#include "xKBNS.h"
 
 namespace PMBB_NAMESPACE {
 

@@ -13,7 +13,7 @@ namespace PMBB_NAMESPACE {
 
 void xPixelOpsSSE::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)Width & c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -31,8 +31,8 @@ void xPixelOpsSSE::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, 
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8 );
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8<uint32> );
     for(int32 y=0; y<Height; y++)
     {
       for(int32 x=0; x<Width16; x+=16)
@@ -60,7 +60,7 @@ void xPixelOpsSSE::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, 
 }
 void xPixelOpsSSE::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)Width & c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -77,8 +77,8 @@ void xPixelOpsSSE::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, 
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8 );
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8<uint32> );
     for(int32 y=0; y<Height; y++)
     {
       for(int32 x=0; x<Width16; x+=16)
@@ -108,7 +108,7 @@ void xPixelOpsSSE::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, 
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;  
 
-  if(((uint32)DstWidth & c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)DstWidth & c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -129,8 +129,8 @@ void xPixelOpsSSE::UpsampleHV(uint16* restrict Dst, const uint16* restrict Src, 
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -172,7 +172,7 @@ void xPixelOpsSSE::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 D
   const uint16* SrcL0 = Src;
   const uint16* SrcL1 = Src + SrcStride;
 
-  if(((uint32)DstWidth & (uint32)c_RemainderMask8)==0) //Width%8==0
+  if(((uint32)DstWidth & (uint32)c_RemainderMask8<uint32>)==0) //Width%8==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -197,8 +197,8 @@ void xPixelOpsSSE::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 D
   }  
   else
   {
-    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8);
-    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4);
+    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8<uint32>);
+    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4<uint32>);
 
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -243,7 +243,7 @@ void xPixelOpsSSE::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 D
   uint16 *restrict DstL0 = Dst;
   uint16 *restrict DstL1 = Dst + DstStride;
 
-  if(((uint32)DstWidth & c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)DstWidth & c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -272,8 +272,8 @@ void xPixelOpsSSE::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 D
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
+    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16<uint32>);
 
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -327,7 +327,7 @@ void xPixelOpsSSE::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32
   const uint16* SrcL0 = Src;
   const uint16* SrcL1 = Src + SrcStride;
 
-  if(((uint32)DstWidth & c_RemainderMask16) == 0) //Width%16==0
+  if(((uint32)DstWidth & c_RemainderMask16<uint32>) == 0) //Width%16==0
   {
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -362,8 +362,8 @@ void xPixelOpsSSE::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -420,7 +420,7 @@ void xPixelOpsSSE::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32
 }
 void xPixelOpsSSE::UpsampleH(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
-  if(((uint32)DstWidth & c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)DstWidth & c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -438,8 +438,8 @@ void xPixelOpsSSE::UpsampleH(uint16* restrict Dst, const uint16* restrict Src, i
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -470,7 +470,7 @@ void xPixelOpsSSE::UpsampleH(uint16* restrict Dst, const uint16* restrict Src, i
 }
 void xPixelOpsSSE::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
-  if(((uint32)DstWidth & (uint32)c_RemainderMask8)==0) //Width%8==0
+  if(((uint32)DstWidth & (uint32)c_RemainderMask8<uint32>)==0) //Width%8==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -490,8 +490,8 @@ void xPixelOpsSSE::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 Ds
   }  
   else
   {
-    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8);
-    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4);
+    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8<uint32>);
+    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4<uint32>);
 
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -526,7 +526,7 @@ void xPixelOpsSSE::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 Ds
 }
 void xPixelOpsSSE::CvtUpsampleH(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
-  if(((uint32)DstWidth & c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)DstWidth & c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -550,8 +550,8 @@ void xPixelOpsSSE::CvtUpsampleH(uint16* restrict Dst, const uint8* Src, int32 Ds
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
+    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16<uint32>);
 
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -593,7 +593,7 @@ void xPixelOpsSSE::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
 {
   __m128i One_I32_V = _mm_set1_epi32((int32)1);
 
-  if(((uint32)DstWidth & c_RemainderMask16) == 0) //Width%16==0
+  if(((uint32)DstWidth & c_RemainderMask16<uint32>) == 0) //Width%16==0
   {
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -619,8 +619,8 @@ void xPixelOpsSSE::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -669,7 +669,7 @@ bool xPixelOpsSSE::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Widt
   const int32   MaxValue  = xBitDepth2MaxValue(BitDepth);
   const __m128i MaxValueV = _mm_set1_epi16((int16)MaxValue);
   
-  if(((uint32)Width & c_RemainderMask16) == 0) //Width%16==0 - fast path without tail
+  if(((uint32)Width & c_RemainderMask16<uint32>) == 0) //Width%16==0 - fast path without tail
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -688,7 +688,7 @@ bool xPixelOpsSSE::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Widt
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
     for(int32 y = 0; y < Height; y++)
     {
       for(int32 x = 0; x < Width16; x += 16)
@@ -715,7 +715,7 @@ void xPixelOpsSSE::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
 {
   const __m128i d = _mm_set1_epi16(ValueD);
 
-  if(((uint32)Width & c_RemainderMask8) == 0) //Width%8==0 - fast path without tail
+  if(((uint32)Width & c_RemainderMask8<uint32>) == 0) //Width%8==0 - fast path without tail
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -750,8 +750,8 @@ void xPixelOpsSSE::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
   }
   else
   {
-    const int32 Width8 = (int32)((uint32)Width & c_MultipleMask8);
-    const int32 Width4 = (int32)((uint32)Width & c_MultipleMask4);
+    const int32 Width8 = (int32)((uint32)Width & c_MultipleMask8<uint32>);
+    const int32 Width4 = (int32)((uint32)Width & c_MultipleMask4<uint32>);
 
     for(int32 y = 0; y < Height; y++)
     {
@@ -812,7 +812,7 @@ void xPixelOpsSSE::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
 }
 void xPixelOpsSSE::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, uint16* restrict DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & (uint32)c_RemainderMask8)==0) //Width%8==0
+  if(((uint32)Width & (uint32)c_RemainderMask8<uint32>)==0) //Width%8==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -852,8 +852,8 @@ void xPixelOpsSSE::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, ui
   }
   else
   {
-    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8);
-    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4);
+    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8<uint32>);
+    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4<uint32>);
 
     for(int32 y=0; y<Height; y++)
     {
@@ -930,7 +930,7 @@ int32 xPixelOpsSSE::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
   const __m128i MaxV  = _mm_set1_epi16((uint16)0xFFFF);
   int32  NumNonZero = 0;
 
-  if(((uint32)Width & (uint32)c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)Width & (uint32)c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -950,9 +950,9 @@ int32 xPixelOpsSSE::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
   }
   else
   {
-    int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
-    int32 Width8  = (int32)((uint32)Width & c_MultipleMask8 );
-    int32 Width4  = (int32)((uint32)Width & c_MultipleMask4 );
+    int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    int32 Width8  = (int32)((uint32)Width & c_MultipleMask8<uint32> );
+    int32 Width4  = (int32)((uint32)Width & c_MultipleMask4<uint32> );
 
     for(int32 y=0; y<Height; y++)
     {
@@ -997,7 +997,7 @@ int32 xPixelOpsSSE::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
 }
 bool xPixelOpsSSE::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask8) == 0) //Width%16==0 - fast path without tail
+  if(((uint32)Width & c_RemainderMask8<uint32>) == 0) //Width%16==0 - fast path without tail
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -1019,7 +1019,7 @@ bool xPixelOpsSSE::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstS
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
     for(int32 y = 0; y < Height; y++)
     {
       for(int32 x = 0; x < Width16; x += 16)

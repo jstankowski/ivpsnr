@@ -1,11 +1,11 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
 
-#include "xCommonDefPMBB-BASE.h"
+#include "xCommonDefBASE.h"
 #include "xString.h"
 #include <vector>
 #include <map>
@@ -336,8 +336,6 @@ public:
 public:
   static void printCommandlineArgs(int argc, const char* argv[]);
   static void printParsingError(tCSR ErrorMessage, tCSR HelpString);
-  static void printError(tCSR ErrorMessage, tCSR  HelpString = std::string());
-  static void printError(tCSR ErrorMessage, tCSV& HelpString);
 };
 
 //===============================================================================================================================================================================================================

@@ -52,10 +52,10 @@ public:
   inline bool   canRead () const { return (int32)m_StrmDirF & (int32)eDirF::Read ; }
   inline bool   canWrite() const { return (int32)m_StrmDirF & (int32)eDirF::Write; }
 
-  inline bool   read (void*       Memmory, uint32 Length) { m_Stream->read (reinterpret_cast<      char*>(Memmory), Length); return !m_Stream->fail(); }
-  inline bool   write(const void* Memmory, uint32 Length) { m_Stream->write(reinterpret_cast<const char*>(Memmory), Length); return !m_Stream->fail(); }
+  inline bool   read (void*       Memmory, uint64 Length) { m_Stream->read (reinterpret_cast<      char*>(Memmory), Length); return !m_Stream->fail(); }
+  inline bool   write(const void* Memmory, uint64 Length) { m_Stream->write(reinterpret_cast<const char*>(Memmory), Length); return !m_Stream->fail(); }
   inline bool   write(const std::string& String         ) { m_Stream->write(String.c_str()                 , String.size()); return !m_Stream->fail(); }
-  inline bool   skip (                     uint32 Length) { return seekR(Length, eSeek::Cur); }
+  inline bool   skip (                     uint64 Length) { return seekR(Length, eSeek::Cur); }
 
          int64  tellR() { return m_Stream->tellg(); }
          int64  tellW() { return m_Stream->tellg(); }

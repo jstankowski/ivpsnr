@@ -4,7 +4,7 @@
 */
 
 #pragma once
-#include "xCommonDefPMBB-BASE.h"
+#include "xCommonDefBASE.h"
 
 namespace PMBB_BASE {
 
@@ -45,6 +45,13 @@ public:
   static const uint32 c_Log2MemSizePageBase ;
   static const uint32 c_Log2MemSizePageHuge ;
 
+  static const uint32 c_SizeMaskCacheLine;
+  static const uint32 c_SizeMaskPageBase ;
+  static const uint32 c_SizeMaskPageHuge ;
+
+  static const uint32 c_AllocThresholdPageBase;
+  static const uint32 c_AllocThresholdPageHuge;
+
 public:
   //Allocation with explicit alignment
 #if defined(X_PMBB_COMPILER_MSVC)
@@ -70,6 +77,12 @@ public:
 protected:
   static uint64 xLog2(uint64 Val) { return (Val > 1) ? 1 + xLog2(Val >> 1) : 0; } //positive integer only
   static uint64 xRoundUpToNearestMultiple(uint64 Value, uint64 Log2Multiple) { return (((Value + ((1 << Log2Multiple) - 1)) >> Log2Multiple) << Log2Multiple); } //positive integer only
+  
+  static uint32 xCalcAllocThreshold(uint32 PageSize) { return (PageSize >> 1) + (PageSize >> 2) + (PageSize >> 3); }
+
+  static inline bool xWorthUseHuge(uintSize Size) { return (Size > (c_MemSizePageHuge  << 1)) || ((Size & c_SizeMaskPageHuge ) > c_AllocThresholdPageHuge); }
+  static inline bool xWorthUseBase(uintSize Size) { return (Size > (c_MemSizePageBase  << 1)) || ((Size & c_SizeMaskPageBase ) > c_AllocThresholdPageBase); }
+  static inline bool xWorthUseLine(uintSize Size) { return (Size > (c_MemSizeCacheLine << 2)) || ((Size & c_SizeMaskCacheLine) == 0); }
 };
 
 //=============================================================================================================================================================================

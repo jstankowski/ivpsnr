@@ -14,18 +14,18 @@ namespace PMBB_NAMESPACE {
 
 void xColorSpaceAVX::ConvertRGB2YCbCr_I32(uint16* restrict Y, uint16* restrict U, uint16* restrict V, const uint16* R, const uint16* G, const uint16* B, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth, eClrSpcLC ClrSpc)
 {
-  const int32 Y_R = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][0][0];
-  const int32 Y_G = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][0][1];
-  const int32 Y_B = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][0][2];
-  const int32 U_R = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][1][0];
-  const int32 U_G = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][1][1];
-//const int32 U_B = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][1][2]; //is always 0.5
-//const int32 V_R = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][2][0]; //is always 0.5
-  const int32 V_G = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][2][1];
-  const int32 V_B = xColorSpaceCoeff<int32>::c_RGB2YCbCr[(int32)ClrSpc][2][2];
+  const int32 Y_R = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][0][0];
+  const int32 Y_G = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][0][1];
+  const int32 Y_B = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][0][2];
+  const int32 U_R = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][1][0];
+  const int32 U_G = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][1][1];
+//const int32 U_B = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][1][2]; //is always 0.5
+//const int32 V_R = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][2][0]; //is always 0.5
+  const int32 V_G = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][2][1];
+  const int32 V_B = xColorSpaceCoeffYCbCr::c_RGB2YCbCr_I32[(int32)ClrSpc][2][2];
 
-  constexpr int32  Add = xColorSpaceCoeff<int32>::c_Add;
-  constexpr uint32 Shr = xColorSpaceCoeff<int32>::c_Precision;
+  constexpr int32  Add = xColorSpaceCoeffYCbCr::c_Add;
+  constexpr uint32 Shr = xColorSpaceCoeffYCbCr::c_Precision;
   constexpr uint32 Shl = Shr - 1;
   const     int32  Mid = (int32)xBitDepth2MidValue(BitDepth);
   const     int32  Max = (int32)xBitDepth2MaxValue(BitDepth);
@@ -41,7 +41,7 @@ void xColorSpaceAVX::ConvertRGB2YCbCr_I32(uint16* restrict Y, uint16* restrict U
   const __m256i Mid_I32_V  = _mm256_set1_epi32(Mid);
   const __m256i Max_U16_V  = _mm256_set1_epi16((uint16)Max);
 
-  const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
+  const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
   for(int32 y = 0; y < Height; y++)
   {
     for(int32 x = 0; x < Width16; x += 16)
@@ -101,18 +101,18 @@ void xColorSpaceAVX::ConvertRGB2YCbCr_I32(uint16* restrict Y, uint16* restrict U
 }
 void xColorSpaceAVX::ConvertYCbCr2RGB_I32(uint16* restrict R, uint16* restrict G, uint16* restrict B, const uint16* Y, const uint16* U, const uint16* V, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth, eClrSpcLC ClrSpc)
 {
-//const int32 R_Y = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][0][0]; //is always 1.0
-//const int32 R_U = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][0][1]; //is always 0.0
-  const int32 R_V = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][0][2];
-//const int32 G_Y = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][1][0]; //is always 1.0
-  const int32 G_U = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][1][1];
-  const int32 G_V = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][1][2];
-//const int32 B_Y = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][2][0]; //is always 1.0
-  const int32 B_U = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][2][1];
-//const int32 B_V = xColorSpaceCoeff<int32>::c_YCbCr2RGB[(uint32)ClrSpc][2][2]; //is always 0.0
+//const int32 R_Y = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][0][0]; //is always 1.0
+//const int32 R_U = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][0][1]; //is always 0.0
+  const int32 R_V = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][0][2];
+//const int32 G_Y = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][1][0]; //is always 1.0
+  const int32 G_U = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][1][1];
+  const int32 G_V = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][1][2];
+//const int32 B_Y = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][2][0]; //is always 1.0
+  const int32 B_U = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][2][1];
+//const int32 B_V = xColorSpaceCoeffYCbCr::c_YCbCr2RGB_I32[(uint32)ClrSpc][2][2]; //is always 0.0
 
-  constexpr int32  Add = xColorSpaceCoeff<int32>::c_Add;
-  constexpr uint32 Shr = xColorSpaceCoeff<int32>::c_Precision;
+  constexpr int32  Add = xColorSpaceCoeffYCbCr::c_Add;
+  constexpr uint32 Shr = xColorSpaceCoeffYCbCr::c_Precision;
   const     int32  Mid = (int32)xBitDepth2MidValue(BitDepth);
   const     int32  Max = (int32)xBitDepth2MaxValue(BitDepth);
 
@@ -124,7 +124,7 @@ void xColorSpaceAVX::ConvertYCbCr2RGB_I32(uint16* restrict R, uint16* restrict G
   const __m256i Mid_I32_V = _mm256_set1_epi32(Mid);
   const __m256i Max_U16_V = _mm256_set1_epi16((uint16)Max);
 
-  const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
+  const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
   for(int32 y = 0; y < Height; y++)
   {
     for(int32 x = 0; x < Width16; x += 16)

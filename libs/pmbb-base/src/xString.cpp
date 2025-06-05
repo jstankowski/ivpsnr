@@ -35,7 +35,6 @@ std::string xString::replaceAll(const std::string& Source, const std::string& To
   }
   return Result;
 }
-
 std::vector<std::string> xString::split(const std::string& String, const char Delimiter)
 {
   std::vector<std::string> SubStrings;
@@ -49,6 +48,13 @@ std::vector<std::string> xString::split(const std::string& String, const char De
     SubStrings.push_back(std::string{ Striped });
   }
   return SubStrings;
+}
+std::string xString::formatBytes(uint64 Bytes)
+{
+  if     (((Bytes >> 30) << 30) == Bytes) { return std::to_string(Bytes >> 30) + " GiB"; }
+  else if(((Bytes >> 20) << 20) == Bytes) { return std::to_string(Bytes >> 20) + " MiB"; }
+  else if(((Bytes >> 10) << 10) == Bytes) { return std::to_string(Bytes >> 10) + " kiB"; }
+  else                                    { return std::to_string(Bytes      ) + " B"  ; }
 }
 
 //===============================================================================================================================================================================================================

@@ -13,7 +13,7 @@ namespace PMBB_NAMESPACE {
 
 void xPixelOpsAVX::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -32,9 +32,9 @@ void xPixelOpsAVX::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, 
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8 );
+    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8<uint32> );
     for(int32 y=0; y<Height; y++)
     {
       for(int32 x=0; x<Width32; x+=32)
@@ -71,7 +71,7 @@ void xPixelOpsAVX::Cvt(uint16* restrict Dst, const uint8* Src, int32 DstStride, 
 }
 void xPixelOpsAVX::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -89,9 +89,9 @@ void xPixelOpsAVX::Cvt(uint8* restrict Dst, const uint16* Src, int32 DstStride, 
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8 );
+    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8<uint32> );
     for(int32 y=0; y<Height; y++)
     {
       for (int32 x=0; x<Width32; x+=32)
@@ -129,7 +129,7 @@ void xPixelOpsAVX::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 Dst
   uint16* restrict DstL0 = Dst;
   uint16* restrict DstL1 = Dst + DstStride;  
 
-  if(((uint32)DstWidth & c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)DstWidth & c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -151,9 +151,9 @@ void xPixelOpsAVX::UpsampleHV(uint16* restrict Dst, const uint16* Src, int32 Dst
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -205,7 +205,7 @@ void xPixelOpsAVX::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 D
   const uint16* SrcL0     = Src;
   const uint16* SrcL1     = Src + SrcStride;
 
-  if(((uint32)DstWidth & (uint32)c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)DstWidth & (uint32)c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -230,9 +230,9 @@ void xPixelOpsAVX::DownsampleHV(uint16* restrict Dst, const uint16* Src, int32 D
   } 
   else
   {
-    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8 );
-    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4 );
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8<uint32> );
+    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4<uint32>);
 
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -293,7 +293,7 @@ void xPixelOpsAVX::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 D
   uint16 *restrict DstL0 = Dst;
   uint16 *restrict DstL1 = Dst + DstStride;
 
-  if(((uint32)DstWidth & c_RemainderMask64)==0) //Width%64==0
+  if(((uint32)DstWidth & c_RemainderMask64<uint32>)==0) //Width%64==0
   {
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -325,9 +325,9 @@ void xPixelOpsAVX::CvtUpsampleHV(uint16* restrict Dst, const uint8* Src, int32 D
   }
   else
   {
-    const int32 Width64 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask64);
-    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
+    const int32 Width64 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask64<uint32>);
+    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16<uint32>);
 
     for(int32 y=0; y<DstHeight; y+=2)
     {
@@ -402,7 +402,7 @@ void xPixelOpsAVX::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32
   const uint16* SrcL0 = Src;
   const uint16* SrcL1 = Src + SrcStride;
 
-  if(((uint32)DstWidth & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)DstWidth & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -437,9 +437,9 @@ void xPixelOpsAVX::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -521,7 +521,7 @@ void xPixelOpsAVX::CvtDownsampleHV(uint8* restrict Dst, const uint16* Src, int32
 }
 void xPixelOpsAVX::UpsampleH(uint16* restrict Dst, const uint16* restrict Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
-  if(((uint32)DstWidth & c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)DstWidth & c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -540,9 +540,9 @@ void xPixelOpsAVX::UpsampleH(uint16* restrict Dst, const uint16* restrict Src, i
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -584,7 +584,7 @@ void xPixelOpsAVX::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 Ds
 {
   __m256i One_I32_V = _mm256_set1_epi32((int32)1);
 
-  if(((uint32)DstWidth & (uint32)c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)DstWidth & (uint32)c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -604,9 +604,9 @@ void xPixelOpsAVX::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 Ds
   } 
   else
   {
-    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8 );
-    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4 );
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask8<uint32> );
+    const int32 Width4  = (int32)((uint32)DstWidth & (uint32)c_MultipleMask4 <uint32>);
 
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -652,7 +652,7 @@ void xPixelOpsAVX::DownsampleH(uint16* restrict Dst, const uint16* Src, int32 Ds
 }
 void xPixelOpsAVX::CvtUpsampleH(uint16* restrict Dst, const uint8* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight)
 {
-  if(((uint32)DstWidth & c_RemainderMask64)==0) //Width%64==0
+  if(((uint32)DstWidth & c_RemainderMask64<uint32>)==0) //Width%64==0
   {
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -679,9 +679,9 @@ void xPixelOpsAVX::CvtUpsampleH(uint16* restrict Dst, const uint8* Src, int32 Ds
   }
   else
   {
-    const int32 Width64 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask64);
-    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16);
+    const int32 Width64 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask64<uint32>);
+    const int32 Width32 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & (uint32)c_MultipleMask16<uint32>);
 
     for(int32 y=0; y<DstHeight; y++)
     {
@@ -741,7 +741,7 @@ void xPixelOpsAVX::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
   __m256i One_I32_V = _mm256_set1_epi32((int32)1);
 
 
-  if(((uint32)DstWidth & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)DstWidth & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -767,9 +767,9 @@ void xPixelOpsAVX::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32);
-    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8 );
+    const int32 Width32 = (int32)((uint32)DstWidth & c_MultipleMask32<uint32>);
+    const int32 Width16 = (int32)((uint32)DstWidth & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)DstWidth & c_MultipleMask8<uint32> );
 
     for(int32 y = 0; y < DstHeight; y++)
     {
@@ -834,7 +834,7 @@ bool xPixelOpsAVX::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Widt
   const int32   MaxValue  = xBitDepth2MaxValue(BitDepth);
   const __m256i MaxValueV = _mm256_set1_epi16((int16)MaxValue);
 
-  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -853,7 +853,7 @@ bool xPixelOpsAVX::CheckIfInRange(const uint16* Src, int32 SrcStride, int32 Widt
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32);
+    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32<uint32>);
     for(int32 y = 0; y < Height; y++)
     {
       for(int32 x = 0; x < Width32; x += 32)
@@ -880,7 +880,7 @@ void xPixelOpsAVX::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
 {
   const __m256i d = _mm256_set1_epi16(ValueD);
 
-  if(((uint32)Width & c_RemainderMask16) == 0) //Width%16==0
+  if(((uint32)Width & c_RemainderMask16<uint32>) == 0) //Width%16==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -921,9 +921,9 @@ void xPixelOpsAVX::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
   }
   else
   {
-    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16);
-    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8 );
-    const int32 Width4  = (int32)((uint32)Width & c_MultipleMask4 );
+    const int32 Width16 = (int32)((uint32)Width & c_MultipleMask16<uint32>);
+    const int32 Width8  = (int32)((uint32)Width & c_MultipleMask8<uint32> );
+    const int32 Width4  = (int32)((uint32)Width & c_MultipleMask4 <uint32>);
 
     for(int32 y = 0; y < Height; y++)
     {
@@ -1012,7 +1012,7 @@ void xPixelOpsAVX::AOS4fromSOA3(uint16* restrict DstABCD, const uint16* SrcA, co
 }
 void xPixelOpsAVX::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, uint16* restrict DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & (uint32)c_RemainderMask16)==0) //Width%16==0
+  if(((uint32)Width & (uint32)c_RemainderMask16<uint32>)==0) //Width%16==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -1057,9 +1057,9 @@ void xPixelOpsAVX::SOA3fromAOS4(uint16* restrict DstA, uint16* restrict DstB, ui
   }
   else
   {
-    int32 Width16 = (int32)((uint32)Width & (uint32)c_MultipleMask16);
-    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8);
-    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4);
+    int32 Width16 = (int32)((uint32)Width & (uint32)c_MultipleMask16<uint32>);
+    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8<uint32>);
+    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4<uint32>);
 
     for(int32 y=0; y<Height; y++)
     {
@@ -1168,7 +1168,7 @@ int32 xPixelOpsAVX::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
   const __m256i MaxV  = _mm256_set1_epi16((uint16)0xFFFF);
   int32 NumNonZero = 0;
 
-  if(((uint32)Width & (uint32)c_RemainderMask32)==0) //Width%32==0
+  if(((uint32)Width & (uint32)c_RemainderMask32<uint32>)==0) //Width%32==0
   {
     for(int32 y=0; y<Height; y++)
     {
@@ -1188,10 +1188,10 @@ int32 xPixelOpsAVX::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
   }
   else
   {
-    int32 Width32 = (int32)((uint32)Width & (uint32)c_MultipleMask32);
-    int32 Width16 = (int32)((uint32)Width & (uint32)c_MultipleMask16);
-    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8);
-    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4);
+    int32 Width32 = (int32)((uint32)Width & (uint32)c_MultipleMask32<uint32>);
+    int32 Width16 = (int32)((uint32)Width & (uint32)c_MultipleMask16<uint32>);
+    int32 Width8  = (int32)((uint32)Width & (uint32)c_MultipleMask8<uint32>);
+    int32 Width4  = (int32)((uint32)Width & (uint32)c_MultipleMask4<uint32>);
 
     for(int32 y=0; y<Height; y++)
     {
@@ -1244,7 +1244,7 @@ int32 xPixelOpsAVX::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
 }
 bool xPixelOpsAVX::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask32) == 0) //Width%32==0
+  if(((uint32)Width & c_RemainderMask32<uint32>) == 0) //Width%32==0
   {
     for(int32 y = 0; y < Height; y++)
     {
@@ -1266,7 +1266,7 @@ bool xPixelOpsAVX::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstS
   }
   else
   {
-    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32);
+    const int32 Width32 = (int32)((uint32)Width & c_MultipleMask32<uint32>);
     for(int32 y = 0; y < Height; y++)
     {
       for(int32 x = 0; x < Width32; x += 32)

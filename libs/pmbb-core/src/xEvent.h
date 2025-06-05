@@ -6,10 +6,13 @@
 #pragma once
 
 #include "xCommonDefCORE.h"
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
+#if X_PMBB_CPP20
+#  include <atomic>
+#else
+#  include <thread>
+#  include <mutex>
+#  include <condition_variable>
+#endif
 
 //clanup max min crap
 #ifdef X_PMBB_OPERATING_SYSTEM_WINDOWS
@@ -26,6 +29,27 @@ namespace PMBB_NAMESPACE {
 //===============================================================================================================================================================================================================
 // xEvent - thread safe binary event
 //===============================================================================================================================================================================================================
+
+#if X_PMBB_CPP20
+
+class xEvent
+{
+protected:
+  std::atomic_flag m_State;
+  const bool       m_ManualReset;
+
+public:
+  xEvent(bool ManualReset, bool InitialState) : m_ManualReset(ManualReset) { if(InitialState) { m_State.test_and_set(); } else { m_State.clear(); } }
+  xEvent           (const xEvent&) = delete;
+  xEvent& operator=(const xEvent&) = delete;
+
+  inline void set  () { m_State.test_and_set(); m_State.notify_all(); }
+  inline void reset() { m_State.clear(); }
+  inline void wait () { m_State.wait(false); if(!m_ManualReset) { m_State.test_and_set(); } }
+};
+
+#else //X_PMBB_CPP20
+
 class xEvent
 {
 protected:
@@ -36,33 +60,29 @@ protected:
 
 public:
   xEvent(bool ManualReset, bool InitialState) : m_State(InitialState), m_ManualReset(ManualReset) {}
-  xEvent(const xEvent&) = delete;
+  xEvent           (const xEvent&) = delete;
   xEvent& operator=(const xEvent&) = delete;
 
-  inline void set     ();
-  inline void reset   ();
-  inline void wait    ();
+  inline void set()
+  {
+    std::lock_guard<std::mutex> LockManager(m_Mutex);
+    m_State = true;
+    m_ConditionVariable.notify_all();
+  }
+  inline void reset()
+  {
+    std::lock_guard<std::mutex> LockManager(m_Mutex);
+    m_State = false;
+  }
+  inline void wait()
+  {
+    std::unique_lock<std::mutex> LockManager(m_Mutex);
+    while(m_State == false) { m_ConditionVariable.wait(LockManager, [&] { return m_State; }); }
+    if(!m_ManualReset) { m_State = false; }
+  }
 };
 
-//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-void xEvent::set()
-{
-  std::lock_guard<std::mutex> LockManager(m_Mutex);
-  m_State = true;
-  m_ConditionVariable.notify_all();
-}  
-void xEvent::reset()
-{
-  std::lock_guard<std::mutex> LockManager(m_Mutex);
-  m_State = false;
-}
-void xEvent::wait()
-{
-  std::unique_lock<std::mutex> LockManager(m_Mutex);
-  while(m_State == false){ m_ConditionVariable.wait(LockManager, [&]{ return m_State;}); }
-  if(!m_ManualReset) { m_State = false; }
-}
+#endif //X_PMBB_CPP20
 
 //===============================================================================================================================================================================================================
 

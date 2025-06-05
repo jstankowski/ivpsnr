@@ -29,6 +29,17 @@ void xShftCompPic::GenShftCompPics(xPicI* DstRef, xPicI* DstTst, const xPicI* Sr
   xGenShftCompPic(DstRef, SrcRef, SrcTst, GlobalColorDiffRef2Tst, SearchRange, CmpWeights, TPI); //TODO check GlobalColorDiffRef2Tst
   xGenShftCompPic(DstTst, SrcTst, SrcRef, GlobalColorDiffTst2Ref, SearchRange, CmpWeights, TPI);
 }
+void xShftCompPic::GenShftCompPicsM(xPicI* DstRef, xPicI* DstTst, const xPicI* SrcRef, const xPicI* SrcTst, const xPicP* Msk, const int32V4& GlobalColorDiffRef2Tst, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI)
+{
+  assert(DstRef != nullptr && DstTst != nullptr && SrcRef != nullptr && SrcTst != nullptr);
+  assert(DstRef->isCompatible(DstTst) && DstRef->isCompatible(SrcRef) && DstRef->isCompatible(SrcTst));
+  assert(DstRef->isSameSize(Msk));
+
+  const int32V4 GlobalColorDiffTst2Ref = -GlobalColorDiffRef2Tst;
+
+  xGenShftCompPicM(DstRef, SrcRef, SrcTst, Msk, GlobalColorDiffRef2Tst, SearchRange, CmpWeights, TPI); //TODO check GlobalColorDiffRef2Tst
+  xGenShftCompPicM(DstTst, SrcTst, SrcRef, Msk, GlobalColorDiffTst2Ref, SearchRange, CmpWeights, TPI);
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -38,15 +49,15 @@ void xShftCompPic::xGenShftCompPic(xPicP* DstRef, const xPicP* Ref, const xPicP*
 
   if(TPI != nullptr && TPI->isActive())
   {
-    for(int32 y = 0; y < Height; y++)
+    for(int32 y = 0; y < Height; y += xMultiThreaded::c_NumRowsInRng)
     {
-      TPI->addWaitingTask([&DstRef, &Tst, &Ref, &GlobalColorShift, &SearchRange, &CmpWeights, y](int32 /*ThreadIdx*/) { xGenShftCompRow(DstRef, Ref, Tst, y, GlobalColorShift, SearchRange, CmpWeights); });
+      TPI->storeTask([&DstRef, &Tst, &Ref, &GlobalColorShift, &SearchRange, &CmpWeights, y, Height](int32 /*ThreadIdx*/) { xGenShftCompRng(DstRef, Ref, Tst, y, xMin(y + xMultiThreaded::c_NumRowsInRng, Height), GlobalColorShift, SearchRange, CmpWeights); });
     }
-    TPI->waitUntilTasksFinished(Height);
+    TPI->executeStoredTasks();
   }
   else
   {
-    for(int32 y = 0; y < Height; y++) { xGenShftCompRow(DstRef, Ref, Tst, y, GlobalColorShift, SearchRange, CmpWeights); }
+    xGenShftCompRng(DstRef, Ref, Tst, 0, Height, GlobalColorShift, SearchRange, CmpWeights);
   }
 }
 void xShftCompPic::xGenShftCompPic(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI)
@@ -55,64 +66,54 @@ void xShftCompPic::xGenShftCompPic(xPicI* DstRef, const xPicI* Ref, const xPicI*
 
   if(TPI != nullptr && TPI->isActive())
   {
-    for(int32 y = 0; y < Height; y++)
+    for(int32 y = 0; y < Height; y += xMultiThreaded::c_NumRowsInRng)
     {
-      TPI->addWaitingTask([&DstRef, &Tst, &Ref, &GlobalColorShift, &SearchRange, &CmpWeights, y](int32 /*ThreadIdx*/) { xGenShftCompRow(DstRef, Ref, Tst, y, GlobalColorShift, SearchRange, CmpWeights); });
+      TPI->storeTask([&DstRef, &Tst, &Ref, &GlobalColorShift, &SearchRange, &CmpWeights, y, Height](int32 /*ThreadIdx*/) { xGenShftCompRng(DstRef, Ref, Tst, y, xMin(y + xMultiThreaded::c_NumRowsInRng, Height), GlobalColorShift, SearchRange, CmpWeights); });
     }
-    TPI->waitUntilTasksFinished(Height);
+    TPI->executeStoredTasks();
   }
   else
   {
-    for(int32 y = 0; y < Height; y++) { xGenShftCompRow(DstRef, Ref, Tst, y, GlobalColorShift, SearchRange, CmpWeights); }
+    xGenShftCompRng(DstRef, Ref, Tst, 0, Height, GlobalColorShift, SearchRange, CmpWeights);
   }
 }
-void xShftCompPic::xGenShftCompRow(xPicP* DstRef, const xPicP* Ref, const xPicP* Tst, const int32 y, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights)
+void xShftCompPic::xGenShftCompPicM(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const xPicP* Msk, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights, tThPI* TPI)
 {
-  const int32  Width     = Tst->getWidth ();
-  const int32  TstStride = Tst->getStride();
-  const int32  TstOffset = y * TstStride;
-  const int32  MaxValue  = DstRef->getMaxPelValue();
+  const int32 Height = Ref->getHeight();
 
-  const uint16*    TstPtrLm = Tst   ->getAddr(eCmp::LM) + TstOffset;
-  const uint16*    TstPtrCb = Tst   ->getAddr(eCmp::CB) + TstOffset;
-  const uint16*    TstPtrCr = Tst   ->getAddr(eCmp::CR) + TstOffset;
-  uint16* restrict DstPtrLm = DstRef->getAddr(eCmp::LM) + TstOffset;
-  uint16* restrict DstPtrCb = DstRef->getAddr(eCmp::CB) + TstOffset;
-  uint16* restrict DstPtrCr = DstRef->getAddr(eCmp::CR) + TstOffset;
-
-  for(int32 x = 0; x < Width; x++)
+  if(TPI != nullptr && TPI->isActive())
   {
-    const int32V4 CurrTstValue  = int32V4((int32)(TstPtrLm[x]), (int32)(TstPtrCb[x]), (int32)(TstPtrCr[x]), 0) + GlobalColorShift;
-    const int32   BestRefOffset = xCorrespPixelShift::xFindBestPixelWithinBlock(CurrTstValue, Ref, x, y, SearchRange, CmpWeights);
-    int32  RefLm = Ref->getAddr(eCmp::LM)[BestRefOffset];
-    int32  RefCb = Ref->getAddr(eCmp::CB)[BestRefOffset];
-    int32  RefCr = Ref->getAddr(eCmp::CR)[BestRefOffset];
-    uint16 DstLm = (uint16)xClipU(RefLm - GlobalColorShift[0], MaxValue);
-    uint16 DstCb = (uint16)xClipU(RefCb - GlobalColorShift[1], MaxValue);
-    uint16 DstCr = (uint16)xClipU(RefCr - GlobalColorShift[2], MaxValue);
-    DstPtrLm[x] = DstLm;
-    DstPtrCb[x] = DstCb;
-    DstPtrCr[x] = DstCr;
-  }//x
+    for(int32 y = 0; y < Height; y += xMultiThreaded::c_NumRowsInRng)
+    {
+      TPI->storeTask([&DstRef, &Tst, &Ref, &Msk, &GlobalColorShift, &SearchRange, &CmpWeights, y, Height](int32 /*ThreadIdx*/) { xGenShftCompRngM(DstRef, Ref, Tst, Msk, y, xMin(y + xMultiThreaded::c_NumRowsInRng, Height), GlobalColorShift, SearchRange, CmpWeights); });
+    }
+    TPI->executeStoredTasks();
+  }
+  else
+  {
+    xGenShftCompRngM(DstRef, Ref, Tst, Msk, 0, Height, GlobalColorShift, SearchRange, CmpWeights);
+  }
 }
-void xShftCompPic::xGenShftCompRow(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const int32 y, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights)
+void xShftCompPic::xGenShftCompRng(xPicP* DstRef, const xPicP* Ref, const xPicP* Tst, const int32 BegY, const int32 EndY, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights)
 {
-  const int32   Width     = Tst->getWidth ();
-  const int32   TstStride = Tst->getStride();
-  const int32   TstOffset = y * TstStride;
-  const int32V4 MaxValue  = xMakeVec4<int32>(DstRef->getMaxPelValue());
-
-  const uint16V4*    TstPtr = Tst   ->getAddr() + TstOffset;
-  uint16V4* restrict DstPtr = DstRef->getAddr() + TstOffset;
-
-  for(int32 x = 0; x < Width; x++)
+  for(int32 y = BegY; y < EndY; y++)
   {
-    const int32V4  CurrTstValue  = (int32V4)(TstPtr[x]) + GlobalColorShift;
-    const int32    BestRefOffset = xCorrespPixelShiftSTD::FindBestPixelWithinBlock(CurrTstValue, Ref, x, y, SearchRange, CmpWeights);
-    const int32V4  RefValue      = (int32V4)(Ref->getAddr()[BestRefOffset]);
-    const uint16V4 DstValue      = (uint16V4)((RefValue - GlobalColorShift).getClipU(MaxValue));
-    DstPtr[x] = DstValue;
-  }//x
+    xCorrespPixelShift::GenShftCompRow(DstRef, Ref, Tst, y, GlobalColorShift, SearchRange, CmpWeights);
+  }
+}
+void xShftCompPic::xGenShftCompRng(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const int32 BegY, const int32 EndY, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights)
+{
+  for(int32 y = BegY; y < EndY; y++)
+  {
+    xCorrespPixelShift::GenShftCompRow(DstRef, Ref, Tst, y, GlobalColorShift, SearchRange, CmpWeights);
+  }
+}
+void xShftCompPic::xGenShftCompRngM(xPicI* DstRef, const xPicI* Ref, const xPicI* Tst, const xPicP* Msk, const int32 BegY, const int32 EndY, const int32V4& GlobalColorShift, const int32 SearchRange, const int32V4& CmpWeights)
+{
+  for(int32 y = BegY; y < EndY; y++)
+  {
+    xCorrespPixelShift::GenShftCompRowM(DstRef, Ref, Tst, Msk, y, GlobalColorShift, SearchRange, CmpWeights);
+  }
 }
 
 //===============================================================================================================================================================================================================

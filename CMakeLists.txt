@@ -31,6 +31,7 @@ endif()
 #=========================================================================================================================================
 # Setup
 #=========================================================================================================================================
+#experimental features
 set(PMBB_ENABLE_EXPERIMENTAL FALSE CACHE BOOL "Enable experimental features")
 message(STATUS "PMBB_ENABLE_EXPERIMENTAL = ${PMBB_ENABLE_EXPERIMENTAL}")
 set(PMBB_ENABLE_EXPERIMENTAL_VALUE $<BOOL:${PMBB_ENABLE_EXPERIMENTAL}>)
@@ -46,6 +47,16 @@ else()
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
+#broken features
+set(PMBB_ENABLE_STALLED FALSE CACHE BOOL "Enable stalled features")
+message(STATUS "PMBB_ENABLE_STALLED      = ${PMBB_ENABLE_STALLED}")
+set(PMBB_ENABLE_STALLED_VALUE $<BOOL:${PMBB_ENABLE_STALLED}>)
+
+#broken features
+set(PMBB_ENABLE_BROKEN FALSE CACHE BOOL "Enable broken features")
+message(STATUS "PMBB_ENABLE_BROKEN       = ${PMBB_ENABLE_BROKEN}")
+set(PMBB_ENABLE_BROKEN_VALUE $<BOOL:${PMBB_ENABLE_BROKEN}>)
+
 # set c++ standard requirements
 set(CMAKE_CXX_STANDARD_REQUIRED ON ) 
 set(CMAKE_CXX_EXTENSIONS        OFF)
@@ -53,11 +64,28 @@ set(CMAKE_CXX_EXTENSIONS        OFF)
 # compile everything position independent (even static libraries)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE )
 
-# force static runtime libraries for msvc builds 
-if(MSVC)
+#=========================================================================================================================================
+# Compiler
+#=========================================================================================================================================
+PMBB_ASSIGN_AS_BOOL(PMBB_COMPILER_IS_MSVC         CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+PMBB_ASSIGN_AS_BOOL(PMBB_COMPILER_IS_GCC          CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
+PMBB_ASSIGN_AS_BOOL(PMBB_COMPILER_IS_CLANG        ((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")))
+PMBB_ASSIGN_AS_BOOL(PMBB_COMPILER_IS_GCC_OR_CLANG (PMBB_COMPILER_IS_GCC OR PMBB_COMPILER_IS_CLANG))
+
+message(STATUS "PMBB_COMPILER_IS_MSVC    = ${PMBB_COMPILER_IS_MSVC}" )
+message(STATUS "PMBB_COMPILER_IS_GCC     = ${PMBB_COMPILER_IS_GCC}"  )
+message(STATUS "PMBB_COMPILER_IS_CLANG   = ${PMBB_COMPILER_IS_CLANG}")
+
+# mitigate msvc madness
+if(PMBB_COMPILER_IS_MSVC)
+  #get path to manifest
+  set(PMBB_MSVC_MANIFEST_PATH "${CMAKE_CURRENT_LIST_DIR}/msvc/app.manifest")
+  #disable - Compiler Warning (level 4) C4324 'structname': structure was padded due to alignment specifier
+  add_compile_options(/wd4324) 
+  # force static runtime libraries for msvc builds 
   #set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  #add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-  #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+  add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+  add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif()
 
 #-----------------------------------------------------------------------------------------------------------------------------------------
@@ -65,24 +93,18 @@ endif()
 include(CheckIPOSupported)
 check_ipo_supported(RESULT lto_is_supported OUTPUT output)
 if(lto_is_supported)
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto")
-  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto")
-  else()
-    set (CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-  endif()
+  set (CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-if(MSVC)
+if(PMBB_COMPILER_IS_MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
   set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /PROFILE")
-else()
+elseif(PMBB_COMPILER_IS_GCC_OR_CLANG)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+if(PMBB_COMPILER_IS_GCC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi -Wno-interference-size")
 endif()
 
 #=========================================================================================================================================
@@ -97,18 +119,27 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
 endif()
 
 PMBB_ASSIGN_AS_BOOL(PMBB_CPU_ARCH_IS_AMD64 CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64)$"  )
+PMBB_ASSIGN_AS_BOOL(PMBB_CPU_ARCH_IS_ARM64 CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$" )
+message(STATUS "PMBB_CPU_ARCH_IS_AMD64   = ${PMBB_CPU_ARCH_IS_AMD64}")
+message(STATUS "PMBB_CPU_ARCH_IS_ARM64   = ${PMBB_CPU_ARCH_IS_ARM64}")
+
 PMBB_ASSIGN_AS_BOOL(PMBB_OS_IS_WINDOWS     CMAKE_SYSTEM_NAME STREQUAL "Windows")
 PMBB_ASSIGN_AS_BOOL(PMBB_OS_IS_LINUX       CMAKE_SYSTEM_NAME STREQUAL "Linux"  )
-
-message(STATUS "PMBB_CPU_ARCH_IS_AMD64   = ${PMBB_CPU_ARCH_IS_AMD64}")
+PMBB_ASSIGN_AS_BOOL(PMBB_OS_IS_ANDROID     CMAKE_SYSTEM_NAME STREQUAL "Android")
+PMBB_ASSIGN_AS_BOOL(PMBB_OS_IS_DARWIN      CMAKE_SYSTEM_NAME STREQUAL "Darwin" )
 message(STATUS "PMBB_OS_IS_WINDOWS       = ${PMBB_OS_IS_WINDOWS}")
-message(STATUS "PMBB_OS_IS_LINUX         = ${PMBB_OS_IS_LINUX}")
+message(STATUS "PMBB_OS_IS_LINUX         = ${PMBB_OS_IS_LINUX}"  )
+message(STATUS "PMBB_OS_IS_ANDROID       = ${PMBB_OS_IS_ANDROID}")
+message(STATUS "PMBB_OS_IS_DARWIN        = ${PMBB_OS_IS_DARWIN}" )
 
 #=========================================================================================================================================
 # Instruction sets & multiarch build
 #=========================================================================================================================================
 if(PMBB_CPU_ARCH_IS_AMD64 AND (NOT CMAKE_TESTING_ENABLED))
   message(STATUS "${PROJECT_NAME} --> x86-64 Microarchitecture Feature Level (MFL) is available")
+  set(PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES TRUE CACHE BOOL "Enable generation of multiarch binnaries"      )
+elseif(PMBB_CPU_ARCH_IS_ARM64 AND (PMBB_OS_IS_LINUX) AND (NOT CMAKE_TESTING_ENABLED))
+  message(STATUS "${PROJECT_NAME} --> ARM64 Microarchitecture Feature Level (MFL) is available")
   set(PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES TRUE CACHE BOOL "Enable generation of multiarch binnaries"      )
 else()
   set(PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES FALSE CACHE BOOL "Enable generation of multiarch binnaries" FORCE)
@@ -132,7 +163,7 @@ if(PMBB_CPU_ARCH_IS_AMD64)
     set(LIST_MFL "${LIST_MICROARCH_FEATURE_LEVELS_ALL}")
   else()
     if (PMBB_BUILD_WITH_MARCH_NATIVE)
-      if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+      if(PMBB_COMPILER_IS_GCC_OR_CLANG)
         add_compile_options("-march=native")
       endif()
       if(MSVC)
@@ -153,9 +184,20 @@ if(PMBB_CPU_ARCH_IS_AMD64)
       add_compile_definitions(${MFL_CD})
     endif()
   endif()
+elseif(PMBB_CPU_ARCH_IS_ARM64)
+  include(cmake/MicroarchFeatureLevelsARM64.cmake)
+  if(PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES)
+    set(LIST_MFL "${LIST_MICROARCH_FEATURE_LEVELS_ALL}")
+  else()
+    if (PMBB_BUILD_WITH_MARCH_NATIVE)
+      if(PMBB_COMPILER_IS_GCC_OR_CLANG)
+        add_compile_options("-march=native")
+      endif()
+    endif()
+  endif()
 else()
   if (PMBB_BUILD_WITH_MARCH_NATIVE)
-    if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+    if(PMBB_COMPILER_IS_GCC_OR_CLANG)
       add_compile_options("-march=native")
     endif()
   endif()
@@ -200,7 +242,7 @@ if(PMBB_GENERATE_TESTING)
 endif()
 
 #=========================================================================================================================================
-# png read/write library SPNG ()
+# png read/write library
 #=========================================================================================================================================
 add_subdirectory(thirdparty/spng    thirdparty-spng)
 
@@ -211,10 +253,18 @@ add_subdirectory(libs/pmbb-base    libpmbb-base)
 add_subdirectory(libs/pmbb-core    libpmbb-core)
 add_subdirectory(libs/pmbb-ivqm    libpmbb-ivqm)
 add_subdirectory(libs/pmbb-slst    libpmbb-slst)
+add_subdirectory(libs/pmbb-fvgs    libpmbb-fvgs)
+add_subdirectory(libs/pmbb-hash    libpmbb-hash)
+add_subdirectory(libs/pmbb-gsr     libpmbb-gsr )
+add_subdirectory(libs/pmbb-qmau    libpmbb-qmau)
+add_subdirectory(libs/pmbb-gsau    libpmbb-gsau)
+
 #=========================================================================================================================================
 # apps
 #=========================================================================================================================================
-add_subdirectory(apps/QMIV IVPSNR)
+add_subdirectory(apps/QMIV       QMIV      )
+add_subdirectory(apps/QMIV-GS    QMIV-GS   )
+add_subdirectory(apps/QMIV-GSR   QMIV-GSR  )
 
 #=========================================================================================================================================
 # debug

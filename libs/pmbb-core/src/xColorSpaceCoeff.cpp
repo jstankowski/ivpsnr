@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -14,7 +14,7 @@ namespace PMBB_NAMESPACE {
 //===============================================================================================================================================================================================================
 std::string xColorSpaceCoeffCommon::formatColorSpaceCoeff(tMatCoeffsF32 Coeff, const std::vector<std::string>& SrcCmp, const std::vector<std::string>& DstCmp)
 {
-  std::string Result; Result.reserve(xMemory::c_MemSizePageBase);
+  std::string Result; Result.reserve(xMemory::getBestEffortSizePageBase());
   for(int32 i = 0; i < 3; i++)
   {
     for(int32 j = 0; j < 3; j++)
@@ -27,7 +27,7 @@ std::string xColorSpaceCoeffCommon::formatColorSpaceCoeff(tMatCoeffsF32 Coeff, c
 }
 std::string xColorSpaceCoeffCommon::formatColorSpaceCoeff(tMatCoeffsI32 Coeff, const std::vector<std::string>& SrcCmp, const std::vector<std::string>& DstCmp)
 {
-  std::string Result; Result.reserve(xMemory::c_MemSizePageBase);
+  std::string Result; Result.reserve(xMemory::getBestEffortSizePageBase());
   for(int32 i = 0; i < 3; i++)
   {
     for(int32 j = 0; j < 3; j++)

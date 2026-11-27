@@ -160,6 +160,76 @@ void xPixelOpsSTD::CvtDownsampleH(uint8* restrict Dst, const uint16* Src, int32 
     Src += SrcStride;
   }
 }
+void xPixelOpsSTD::Threshold(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, const uint16 Threshold, const uint16 MaxVal)
+{
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++)
+    {
+      Dst[x] = Src[x] >= Threshold ? MaxVal : 0;
+    }
+    Src += SrcStride;
+    Dst += DstStride;
+  }
+}
+void xPixelOpsSTD::ShiftRound(uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, int32 DstBitDepth, int32 SrcBitDepth)
+{
+  const int32 Shift = SrcBitDepth - DstBitDepth;
+
+  if(Shift==0) //no operation
+  {
+    if(Dst!=Src)
+    {
+      for(int32 y=0; y<Height; y++)
+      {
+        ::memcpy(Dst, Src, Width*sizeof(int16));
+        Src += SrcStride;
+        Dst += DstStride;  
+      }
+    }
+  }
+  else if(Shift<0) //bit depth increase
+  {
+    const int32 DeltaBits = -Shift;
+    for(int32 y=0; y<Height; y++)
+    {
+      for(int32 x=0; x<Width; x++)
+      {      
+        Dst[x] = Src[x] << DeltaBits;
+      }
+      Src += SrcStride;
+      Dst += DstStride;  
+    }
+  }
+  else //Shift>0  //bit depth decrease
+  {
+    const int32 MaxValue  = xBitDepth2MaxValue(DstBitDepth);
+    const int32 DeltaBits = Shift;
+    uint32 Offset = 1<<(DeltaBits-1);
+    for(int32 y=0; y<Height; y++)
+    {
+      for(int32 x=0; x<Width; x++)
+      {      
+        Dst[x] = (uint16)xClipU<int32>((((int32)Src[x] + Offset) >> DeltaBits), MaxValue);
+      }
+      Src += SrcStride;
+      Dst += DstStride;  
+    }
+  }
+}
+void xPixelOpsSTD::Maximum(uint16* restrict Dst, const uint16* SrcA, const uint16* SrcB, int32 DstStride, int32 SrcStride, int32 Width, int32 Height)
+{
+  for(int32 y = 0; y < Height; y++)
+  {
+    for(int32 x = 0; x < Width; x++)
+    {
+      Dst[x] = xMax(SrcA[x], SrcB[x]);
+    }
+    SrcA += SrcStride;
+    SrcB += SrcStride;
+    Dst  += DstStride;
+  }
+}
 bool xPixelOpsSTD::CheckIfInRange(const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth)
 {
   if(BitDepth == 16) { return true; }

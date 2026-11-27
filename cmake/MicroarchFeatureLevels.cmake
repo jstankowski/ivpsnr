@@ -2,7 +2,12 @@
 # 
 #=========================================================================================================================================
 
+if(PMBB_ENABLE_EXPERIMENTAL)
+set(LIST_MICROARCH_FEATURE_LEVELS_ALL "x86-64-SCLR" "x86-64" "x86-64-v2" "x86-64-v3" "x86-64-v4" "ZenVer4")
+else()
 set(LIST_MICROARCH_FEATURE_LEVELS_ALL "x86-64" "x86-64-v2" "x86-64-v3" "x86-64-v4")
+endif()
+
 list(LENGTH LIST_MICROARCH_FEATURE_LEVELS_ALL NUMOF_MICROARCH_FEATURE_LEVELS_ALL)  
 
 #=========================================================================================================================================
@@ -34,9 +39,15 @@ function(determine_compiler_settings_for_MFL COMPILE_OPTIONS COMPILE_DEFINITIONS
   endif()
   
   #GCC >= 11.0 or CLANG >= 12.0
-  if(((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" ) AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0"))
-   OR ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")))
-    if    (MFL STREQUAL "x86-64"   )
+  if((PMBB_COMPILER_IS_GCC AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0"))
+   OR (PMBB_COMPILER_IS_CLANG AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0")))
+    if    (MFL STREQUAL "x86-64-SCLR")
+      if(PMBB_COMPILER_IS_GCC)
+        set(COMPILE_OPT "-march=x86-64" "-fno-tree-vectorize" "-fno-tree-loop-vectorize" "-fno-tree-slp-vectorize")
+      elseif(PMBB_COMPILER_IS_CLANG) 
+        set(COMPILE_OPT "-march=x86-64" "-fno-vectorize" "-fno-slp-vectorize")
+      endif()
+    elseif(MFL STREQUAL "x86-64"   )
       set(COMPILE_OPT "-march=x86-64")
     elseif(MFL STREQUAL "x86-64-v2")
       set(COMPILE_OPT "-march=x86-64-v2")
@@ -44,13 +55,21 @@ function(determine_compiler_settings_for_MFL COMPILE_OPTIONS COMPILE_DEFINITIONS
       set(COMPILE_OPT "-march=x86-64-v3" "-mpclmul") # assume all AVX2 capable CPUs have CLMUL
     elseif(MFL STREQUAL "x86-64-v4")
       set(COMPILE_OPT "-march=x86-64-v4" "-mpclmul") # assume all AVX512 capable CPUs have CLMUL
+    elseif(MFL STREQUAL "ZenVer4")
+      set(COMPILE_OPT "-march=znver4")
     endif()
     #set(COMPILE_OPT "-march=${MFL}")
     set(COMPILE_DEF "")
    
   #older GCC or CLANG
-  elseif((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
-    if    (MFL STREQUAL "x86-64"   )
+  elseif(PMBB_COMPILER_IS_GCC_OR_CLANG)
+    if    (MFL STREQUAL "x86-64-SCLR")
+      if(PMBB_COMPILER_IS_GCC)
+        set(COMPILE_OPT "-fno-tree-vectorize" "-fno-tree-loop-vectorize" "-fno-tree-slp-vectorize")
+      elseif(PMBB_COMPILER_IS_CLANG) 
+        set(COMPILE_OPT "-fno-vectorize" "-fno-slp-vectorize")
+      endif()    
+    elseif(MFL STREQUAL "x86-64"   )
       set(COMPILE_OPT "")
     elseif(MFL STREQUAL "x86-64-v2")
       set(COMPILE_OPT "-march=nehalem")
@@ -58,12 +77,17 @@ function(determine_compiler_settings_for_MFL COMPILE_OPTIONS COMPILE_DEFINITIONS
       set(COMPILE_OPT "-march=haswell" "-mpclmul") # assume all AVX2 capable CPUs have CLMUL
     elseif(MFL STREQUAL "x86-64-v4")
       set(COMPILE_OPT "-march=skylake-avx512" "-mpclmul") # assume all AVX2 capable CPUs have CLMUL
+    elseif(MFL STREQUAL "ZenVer4")
+      error("ZenVer4 not supported")
     endif()
     set(COMPILE_DEF "")
   
   #MSVC
-  elseif(MSVC)
-    if    (MFL STREQUAL "x86-64"   )
+  elseif(PMBB_COMPILER_IS_MSVC)
+    if    (MFL STREQUAL "x86-64-SCLR")
+      set(COMPILE_OPT "/d2Qvec-")
+      set(COMPILE_DEF "PMBB_SIMD_ALLOWED=0")
+    elseif(MFL STREQUAL "x86-64"   )
       set(COMPILE_OPT "/arch:SSE2")
       set(COMPILE_DEF "__SSE__" "__SSE2__")
     elseif(MFL STREQUAL "x86-64-v2")
@@ -75,13 +99,18 @@ function(determine_compiler_settings_for_MFL COMPILE_OPTIONS COMPILE_DEFINITIONS
     elseif(MFL STREQUAL "x86-64-v4")
       set(COMPILE_OPT "/arch:AVX512")
       set(COMPILE_DEF "__SSE__" "__SSE2__" "__SSE3__" "__SSSE3__" "__SSE4_1__" "__SSE4_2__")
+    elseif(MFL STREQUAL "ZenVer4")
+      set(COMPILE_OPT "/arch:AVX512")
+      set(COMPILE_DEF "__SSE__" "__SSE2__" "__SSE3__" "__SSSE3__" "__SSE4_1__" "__SSE4_2__" "__AVX512BITALG__" "__AVX512VBMI2__" "__AVX512VBMI__" "__AVX512IFMA__" "__AVX512VPOPCNTDQ__" "__AVX512BF16__" "__AVX512VNNI__" "__VPCLMULQDQ__")
     endif()
 
   #END  
   endif()
   
   #convert to nice name
-  if(MFL STREQUAL "x86-64")
+  if(MFL STREQUAL "x86-64-SCLR")
+    set(COMPILE_TAG "AMD64SCLR")
+  elseif(MFL STREQUAL "x86-64")
     set(COMPILE_TAG "AMD64v1")
   else()  
     string(REPLACE "x86-64-" "AMD64" COMPILE_TAG ${MFL})

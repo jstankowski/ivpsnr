@@ -1,10 +1,9 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
-
 #include "xCommonDefCORE.h"
 #include "xString.h"
 
@@ -37,7 +36,6 @@ class xMiscUtilsCORE
 {
 public:
   static std::string formatCompileTimeSetup();
-  static std::string formatBuildInfo       ();
 };
 
 //===============================================================================================================================================================================================================

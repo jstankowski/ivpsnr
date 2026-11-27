@@ -1,13 +1,13 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
-
 #include "xCommonDefCORE.h"
 #include "xPicCommon.h"
 #include "xVec.h"
+#include "xThreadPool.h"
 #include <mutex>
 
 namespace PMBB_NAMESPACE {
@@ -38,8 +38,8 @@ public:
   void   fill   (uint16 Value                );
   void   fill   (uint16 Value    , eCmp CmpId);
   bool   check  (const std::string& Name     )  const;
-  void   conceal(                            );
-  void   extend (                            );
+  void   conceal();
+  void   extend (eMrgExt MarginExtendMode = eMrgExt::Nearest);
 
   bool   equalPic (const xPicP* Src)  const;
   bool   equalCmp (const xPicP* Src, eCmp CmpId)  const;
@@ -144,6 +144,9 @@ public:
   //convertion
   void rearrangeFromPlanar(const xPicP* Planar);
   void rearrangeToPlanar  (      xPicP* Planar);
+
+  void rearrangeFromPlanar(const xPicP* Planar, tThPI* TPI, bool ExecuteStoredTasks);
+  void rearrangeToPlanar  (      xPicP* Planar, tThPI* TPI, bool ExecuteStoredTasks);
 
   //interleaved access
   //inline int32   getStride() const { return m_Stride<<2; }

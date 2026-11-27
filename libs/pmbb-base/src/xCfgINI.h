@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -51,11 +51,11 @@ public:
       Rglr, //regular
       Flag,
       List,
-      Fake,
     };
 
   protected:
     eType       m_Type;
+    bool        m_Fake;
     std::string m_CmdPattern;
     std::string m_SectionName;
     std::string m_ParamName;
@@ -65,16 +65,17 @@ public:
 
   public:
     xCmdParam() { m_Type = eType::None; };
-    [[deprecated]] xCmdParam(tCSR CmdPattern, tCSR SectionName, tCSR ParamName                ) { m_Type = eType::Rglr; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = ""       ; m_Comment = ""; }
-    [[deprecated]] xCmdParam(tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue) { m_Type = eType::Flag; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Comment = ""; }
+    //[[deprecated]] xCmdParam(tCSR CmdPattern, tCSR SectionName, tCSR ParamName                ) { m_Type = eType::Rglr; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = ""       ; m_Comment = ""; }
+    //[[deprecated]] xCmdParam(tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue) { m_Type = eType::Flag; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Comment = ""; }
 
-    xCmdParam(eType Type, tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue, char Separator)
+    xCmdParam(eType Type, bool Fake, tCSR CmdPattern, tCSR SectionName, tCSR ParamName, tCSR FlagValue, char Separator)
     {
-      m_Type = Type;  m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Separator = Separator, m_Comment = "";
+      m_Type = Type; m_Fake = Fake; m_CmdPattern = CmdPattern; m_SectionName = SectionName; m_ParamName = ParamName; m_FlagValue = FlagValue; m_Separator = Separator, m_Comment = "";
     }
 
   public:
     inline eType getType        (                ) const { return m_Type;              }
+    inline bool  getFake        (                ) const { return m_Fake;              }
     inline void  setCmdName     (tCSR CmdPattern )       { m_CmdPattern = CmdPattern;  }
     inline tCSR  getCmdName     (                ) const { return m_CmdPattern;        }
     inline void  setSectionName (tCSR SectionName)       { m_SectionName = SectionName;}
@@ -277,10 +278,11 @@ public:
     xParser();
     void        setUnknownCmdParams(bool AllowUnknownCmdParams) { m_AllowUnknownCmdParams = AllowUnknownCmdParams; }
     void        setEmptyCmdParams  (bool AllowEmptyCmdParams  ) { m_AllowEmptyCmdParams   = AllowEmptyCmdParams  ; }
-    void        addCmdParm(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName                );
-    void        addCmdFlag(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, tCSR FlagValue);
-    void        addCmdList(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, char Separator);
-    void        addCmdFake(tCSR CmdShrt, tCSR CmdLong                                                  );
+    void        addCmdParm    (tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName                );
+    void        addCmdFlag    (tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, tCSR FlagValue);
+    void        addCmdList    (tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, char Separator);
+    void        addCmdFakeParm(tCSR CmdShrt, tCSR CmdLong                                                  );
+    void        addCmdFakeFlag(tCSR CmdShrt, tCSR CmdLong                                                  );
     bool        loadFromCmdln (int argc, const char* argv[], tCSR CfgTokenShort = std::string(c_CmdPrefixShrt) + "c", tCSR = std::string(c_CmdPrefixLong) + "config");
     bool        loadFromFile  (tCSR FileName);
     bool        loadFromString(tCSR Buffer  );

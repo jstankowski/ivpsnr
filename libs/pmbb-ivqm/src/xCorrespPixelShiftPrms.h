@@ -16,7 +16,6 @@ namespace PMBB_NAMESPACE {
 class xCorrespPixelShiftPrms
 {
 public:
-  static constexpr bool    c_UseRuntimeCmpWeights = xc_USE_RUNTIME_CMPWEIGHTS;
   static constexpr int32   c_DefaultSearchRange   = 2;
   static constexpr int32V4 c_DefaultCmpWeights    = { 4, 1, 1, 0 };
   static constexpr int32V4 c_EqualCmpWeights      = { 1, 1, 1, 0 };

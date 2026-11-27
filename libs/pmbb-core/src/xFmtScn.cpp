@@ -369,7 +369,6 @@ xFileNameScn::tResI32 xFileNameScn::determineBitDepthFromString(const std::strin
   return std::make_tuple(c_DefBitDepth, eResult::Probable);
 }
 
-
 //===============================================================================================================================================================================================================
 
 } //end of namespace PMBB

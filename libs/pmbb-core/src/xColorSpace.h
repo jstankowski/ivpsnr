@@ -1,5 +1,6 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2025 Patrycja Kaźmierczak <patrycja.kazmierczak@student.put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -33,6 +34,14 @@
 #define X_CAN_USE_AVX512 0
 #endif
 
+//NEON implementation
+#if X_SIMD_CAN_USE_NEON && __has_include("xColorSpaceNEON.h")
+#define X_CAN_USE_NEON 1
+#include "xColorSpaceNEON.h"
+#else
+#define X_CAN_USE_NEON 0
+#endif
+
 namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
@@ -48,6 +57,8 @@ public:
     xColorSpaceAVX::   ConvertRGB2YCbCr_I32(Y, U, V, R, G, B, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
 #elif X_CAN_USE_SSE
     xColorSpaceSSE::   ConvertRGB2YCbCr_I32(Y, U, V, R, G, B, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
+#elif X_CAN_USE_NEON
+    xColorSpaceNEON::  ConvertRGB2YCbCr_I32(Y, U, V, R, G, B, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
 #else
     xColorSpaceSTD::   ConvertRGB2YCbCr_I32(Y, U, V, R, G, B, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
 #endif
@@ -61,6 +72,8 @@ public:
     xColorSpaceAVX::   ConvertYCbCr2RGB_I32(R, G, B, Y, U, V, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
 #elif X_CAN_USE_SSE
     xColorSpaceSSE::   ConvertYCbCr2RGB_I32(R, G, B, Y, U, V, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
+#elif X_CAN_USE_NEON
+    xColorSpaceNEON::  ConvertYCbCr2RGB_I32(R, G, B, Y, U, V, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
 #else
     xColorSpaceSTD::   ConvertYCbCr2RGB_I32(R, G, B, Y, U, V, DstStride, SrcStride, Width, Height, BitDepth, ClrSpc);
 #endif
@@ -72,5 +85,6 @@ public:
 #undef X_CAN_USE_SSE
 #undef X_CAN_USE_AVX
 #undef X_CAN_USE_AVX512
+#undef X_CAN_USE_NEON
 
 } //end of namespace PMBB

@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -33,11 +33,23 @@
 #include <fmt/std.h>
 #undef FMT_USE_WINDOWS_H
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 //===============================================================================================================================================================================================================
 // Settings
 //===============================================================================================================================================================================================================
 #ifndef X_PMBB_EXPERIMENTAL
 #define X_PMBB_EXPERIMENTAL 0
+#endif
+
+#ifndef X_PMBB_STALLED
+#define X_PMBB_STALLED 0
+#endif
+
+#ifndef X_PMBB_BROKEN
+#define X_PMBB_BROKEN 0
 #endif
 
 //===============================================================================================================================================================================================================
@@ -57,9 +69,9 @@
 #elif (defined(__unix__) || defined(__unix) || defined(unix)) //classic unix + some BSDs
   #define X_PMBB_OPERATING_SYSTEM_UNIX 1
   #define X_PMBB_OPERATING_SYSTEM_NAME "Unix"
-#elif (defined(__APPLE__) || defined(__MACH__)) //rotten fruit
-  #define X_PMBB_OPERATING_SYSTEM_MACOS 1
-  #define X_PMBB_OPERATING_SYSTEM_NAME "MACOS"
+#elif ((defined(__APPLE__) || defined(__MACH__)) && TARGET_OS_OSX) //rotten fruit 
+  #define X_PMBB_OPERATING_SYSTEM_DARWIN 1
+  #define X_PMBB_OPERATING_SYSTEM_NAME "Darwin"
 #else
   #error "Unknown target operating system"
   #define X_PMBB_OPERATING_SYSTEM_NAME "  "
@@ -90,18 +102,18 @@
 #endif
 
 //===============================================================================================================================================================================================================
-// architecture section
+// Architecture section
 //===============================================================================================================================================================================================================
 #if defined(_M_X64) || defined (__x86_64__)
   #define X_PMBB_ARCH_AMD64 1
   #define X_PMBB_ARCH_NAME  "AMD64"
+#elif defined(__ARM_ARCH_8A) || defined(__aarch64__) || defined(__ARM_ARCH_ISA_A64) || defined(_M_ARM64)
+  #define X_PMBB_ARCH_ARM64 1
+  #define X_PMBB_ARCH_NAME  "ARM64"
 #else
   #define X_PMBB_ARCH_NAME ""
 #endif
 
-//===============================================================================================================================================================================================================
-// Arch includes
-//===============================================================================================================================================================================================================
 #if defined(X_PMBB_ARCH_AMD64)
 #  if defined(X_PMBB_COMPILER_MSVC)
 #    include <intrin.h>
@@ -110,8 +122,17 @@
 #  endif
 #endif
 
+#if defined(X_PMBB_ARCH_ARM64)
+#  if defined(X_PMBB_COMPILER_MSVC)
+#    include <intrin.h>
+#  else
+#    include <arm_neon.h>
+#    include <arm_acle.h>
+#  endif
+#endif
+
 //===============================================================================================================================================================================================================
-// language version
+// Language version
 //===============================================================================================================================================================================================================
 #if defined(_MSVC_LANG)
 #  define X_PMBB_CPUSPLUS_VER _MSVC_LANG
@@ -128,6 +149,13 @@
 #else
 #  define X_PMBB_CPP20 0
 #endif
+
+#if X_PMBB_CPUSPLUS_VER >= 202302L
+#  define X_PMBB_CPP23 1
+#else
+#  define X_PMBB_CPP23 0
+#endif
+
 
 //===============================================================================================================================================================================================================
 // C99 restrict pointers support
@@ -149,6 +177,17 @@
 #endif
 #elif defined(__STDC__) //STANDARD_C_1989
 #define restrict
+#endif
+
+//===============================================================================================================================================================================================================
+// C++20 likely/unlikely
+//===============================================================================================================================================================================================================
+#if X_PMBB_CPP20
+#define X_ATTR_LIKELY   [[likely]]
+#define X_ATTR_UNLIKELY [[unlikely]] 	
+#else
+#define X_ATTR_LIKELY
+#define X_ATTR_UNLIKELY
 #endif
 
 //===============================================================================================================================================================================================================

@@ -1,11 +1,27 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 #pragma once
 #include "xCommonDefCORE.h"
 
 namespace PMBB_NAMESPACE {
+
+//===============================================================================================================================================================================================================
+// Define f types for consistency
+//===============================================================================================================================================================================================================
+
+#if X_SIMD_CAN_USE_SSE
+using __m512f = __m512;
+#endif
+
+#if X_SIMD_CAN_USE_AVX
+using __m256f = __m256;
+#endif
+
+#if X_SIMD_CAN_USE_AVX512
+using __m128f = __m128;
+#endif
 
 //===============================================================================================================================================================================================================
 // SIMD "view" types for debuging under GCC or CLANG
@@ -109,25 +125,34 @@ inline __m512i _mm512_hadd_epi32(__m512i a, __m512i b)
   __m512i R = _mm512_add_epi32(T, B);
   return R;
 }
+inline __m512i _mm512_hadd_epi64(__m512i a, __m512i b)
+{
+  const __m512i SelU32T = _mm512_setr_epi64(0, 2, 4, 6, 8, 10, 12, 14);
+  const __m512i SelU32B = _mm512_setr_epi64(1, 3, 5, 7, 9, 11, 13, 15);
+  __m512i T = _mm512_permutex2var_epi64(a, SelU32T, b);
+  __m512i B = _mm512_permutex2var_epi64(a, SelU32B, b);
+  __m512i R = _mm512_add_epi64(T, B);
+  return R;
+}
 #endif //X_SIMD_CAN_USE_AVX512
 
 //===============================================================================================================================================================================================================
 // SIMD horizontal sum reduction
 //===============================================================================================================================================================================================================
 #if X_SIMD_CAN_USE_SSE
-static inline int32 xHorVecSum_epi32(__m128i v)
+static inline int32 xHorVecSumI32_epi32(__m128i v)
 {
   __m128i hi64  = _mm_unpackhi_epi64(v, v);
   __m128i sum64 = _mm_add_epi32(hi64, v);
   __m128i hi32  = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));    // Swap the low two elements
   __m128i sum32 = _mm_add_epi32(sum64, hi32);
   return _mm_cvtsi128_si32(sum32);       // movd
-  //alternative, probably slower
+  //alternative, slower
   //v = _mm_hadd_epi32(v, v);
   //v = _mm_hadd_epi32(v, v);
   //return _mm_extract_epi32(v, 0);
 }
-static inline int64 xHorVecSum_epi64(__m128i v)
+static inline int64 xHorVecSumI64_epi64(__m128i v)
 {
   __m128i hi64  = _mm_unpackhi_epi64(v, v);
   __m128i sum64 = _mm_add_epi64(hi64, v);
@@ -135,35 +160,58 @@ static inline int64 xHorVecSum_epi64(__m128i v)
   //alternative, probably slower
   //return (_mm_extract_epi64(v, 0) + _mm_extract_epi64(v, 1));
 }
+static inline flt64 xHorVecSum_pd(__m128d v)
+{
+  __m128d SumF64 = _mm_hadd_pd(v,v);
+  flt64 Res = _mm_cvtsd_f64(SumF64);
+  return Res;
+}
 #endif //X_SIMD_CAN_USE_SSE
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #if X_SIMD_CAN_USE_AVX
-static inline int32 xHorVecSum_epi32(__m256i v)
+static inline int32 xHorVecSumI32_epi32(__m256i Src_I32_V256)
 {
-  __m128i Sum_I32_V128 = _mm_add_epi32(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
-  return xHorVecSum_epi32(Sum_I32_V128);
+  __m128i Sum_I32_V128 = _mm_add_epi32(_mm256_castsi256_si128(Src_I32_V256), _mm256_extracti128_si256(Src_I32_V256, 1));
+  return xHorVecSumI32_epi32(Sum_I32_V128);
 }
-static inline int64 xHorVecSum_epi64(__m256i v)
+static inline int64 xHorVecSumI64_epi64(__m256i Src_I64_V256)
 {
-  __m128i Sum_I64_V128 = _mm_add_epi64(_mm256_castsi256_si128(v), _mm256_extracti128_si256(v, 1));
-  return xHorVecSum_epi64(Sum_I64_V128);
+  __m128i Sum_I64_V128 = _mm_add_epi64(_mm256_castsi256_si128(Src_I64_V256), _mm256_extracti128_si256(Src_I64_V256, 1));
+  return xHorVecSumI64_epi64(Sum_I64_V128);
+}
+static inline flt64 xHorVecSum_pd(__m256d v)
+{
+  __m128d Sum_F64_V128 = _mm_add_pd(_mm256_castpd256_pd128(v), _mm256_extractf128_pd(v, 1));
+  return xHorVecSum_pd(Sum_F64_V128);
 }
 #endif //X_SIMD_CAN_USE_AVX
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 #if X_SIMD_CAN_USE_AVX512
-static inline int32 xHorVecSum_epi32(__m512i v)
+static inline flt64 xHorVecSum_pd(__m512d v)
 {
-  __m256i Sum_I32_V256 = _mm256_add_epi32(_mm512_castsi512_si256(v),_mm512_extracti64x4_epi64(v, 1));
-  return xHorVecSum_epi32(Sum_I32_V256);
+  __m256d Sum_F64_V256 = _mm256_add_pd(_mm512_castpd512_pd256(v), _mm512_extractf64x4_pd(v, 1));
+  return xHorVecSum_pd(Sum_F64_V256);
 }
-static inline int64 xHorVecSum_epi64(__m512i v)
+static inline int64 xHorVecSumI64_epi64(__m512i Src_I64_V512)
 {
-  __m256i Sum_I64_V256 = _mm256_add_epi64(_mm512_castsi512_si256(v), _mm512_extracti64x4_epi64(v, 1));
-  return xHorVecSum_epi64(Sum_I64_V256);
+  __m256i Sum_I64_V256 = _mm256_add_epi64(_mm512_castsi512_si256(Src_I64_V512), _mm512_extracti64x4_epi64(Src_I64_V512, 1));
+  return xHorVecSumI64_epi64(Sum_I64_V256);
+}
+static inline int64 xHorVecSumI64_epi32(__m512i Src_I32_V512)
+{
+  __m512i Src_I64_V512A = _mm512_cvtepi32_epi64(_mm512_extracti64x4_epi64(Src_I32_V512, 1));
+  __m512i Src_I64_V512B = _mm512_cvtepi32_epi64(_mm512_castsi512_si256   (Src_I32_V512   ));
+  __m512i Sum_I64_V512  = _mm512_add_epi64(Src_I64_V512A, Src_I64_V512B);
+  return xHorVecSumI64_epi64(Sum_I64_V512);
+}
+static inline int32 xHorVecSumI32_epi32(__m512i Src_I32_V512)
+{
+  __m256i Sum_I32_V256 = _mm256_add_epi32(_mm512_castsi512_si256(Src_I32_V512), _mm512_extracti64x4_epi64(Src_I32_V512, 1));
+  return xHorVecSumI32_epi32(Sum_I32_V256);
 }
 #endif //X_SIMD_CAN_USE_AVX512
 

@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 #pragma once
@@ -88,6 +88,44 @@ namespace PMBB_NAMESPACE {
 #endif
 #define X_SIMD_CAN_USE_AVX512 (X_SIMD_HAS_AVX512 && PMBB_SIMD_ALLOWED && PMBB_USE_SIMD)
 
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// SIMD section - AVX512 above x86-64-v4
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#if X_SIMD_HAS_AVX512 && defined(__AVX512BITALG__) && defined(__AVX512VBMI2__) && defined(__AVX512VBMI__) && defined(__AVX512IFMA__) &&  defined(__AVX512VPOPCNTDQ__) &&  defined(__AVX512BF16__) && defined(__AVX512VNNI__) && defined(__VPCLMULQDQ__)
+#define X_SIMD_HAS_AVX512_ZEN4 1
+#else
+#define X_SIMD_HAS_AVX512_ZEN4 0
+#endif
+#define X_SIMD_CAN_USE_AVX512_ZEN4 (X_SIMD_HAS_AVX512_ZEN4 && PMBB_SIMD_ALLOWED && PMBB_USE_SIMD)
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// SIMD section - NEON (corresponding to ARMv8.0) + other ARM64 extensions
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+//NEON
+#if defined (__ARM_NEON)
+#define X_SIMD_HAS_NEON 1
+#else
+#define X_SIMD_HAS_NEON 0
+#endif
+#define X_SIMD_CAN_USE_NEON (X_SIMD_HAS_NEON && PMBB_SIMD_ALLOWED && PMBB_USE_SIMD)
+
+//CRC32 extension
+#if defined(__ARM_FEATURE_CRC32)
+#define X_PMBB_HAS_ARM_CRC32 1
+#else
+#define X_PMBB_HAS_ARM_CRC32 0
+#endif
+#define X_PMBB_CAN_USE_ARM_CRC32 (X_PMBB_HAS_ARM_CRC32)
+
+//CRYPTO extension
+#if defined(__ARM_FEATURE_CRYPTO)
+#define X_PMBB_HAS_ARM_CRYPTO 1
+#else
+#define X_PMBB_HAS_ARM_CRYPTO 0
+#endif
+#define X_PMBB_CAN_USE_ARM_CRYPTO (X_SIMD_HAS_NEON && X_PMBB_HAS_ARM_CRYPTO)
+
 //===============================================================================================================================================================================================================
 // Basic ops
 //===============================================================================================================================================================================================================
@@ -106,11 +144,13 @@ template <class XXX> static inline XXX xClipS8  (XXX x                  ) { retu
 template <class XXX> static inline XXX xClipU16 (XXX x                  ) { return xMax((XXX)0,xMin(x,(XXX)65536));}
 template <class XXX> static inline XXX xClipS16 (XXX x                  ) { return xMax((XXX)-32768,xMin(x,(XXX)32767));}
 template <class XXX> static inline XXX xClipPos (XXX x                  ) { return xMax((XXX)0, x); }
+template <class XXX> static inline XXX xReLU    (XXX x                  ) { return xClipPos(x); }
 
 template <class XXX> static inline XXX xAbs     (XXX a) { return (XXX)std::abs(a); }
 template <class XXX> static inline XXX xSign    (XXX a) { return a == 0 ? 0 : a > 0 ? 1 : -1; }
 template <class XXX> static inline XXX xSignNoZ (XXX a) { return a >= 0 ? 1 : -1; }
 template <class XXX> static inline XXX xPow2    (XXX x) { return x * x; }
+template <class XXX> static inline XXX xPow3    (XXX x) { return x * x * x; }
 
 template <class XXX> static inline XXX xBitDepth2MidValue(XXX BitDepth) { return (1 << (BitDepth - 1)); }
 template <class XXX> static inline XXX xBitDepth2MaxValue(XXX BitDepth) { return ((1 << BitDepth) - 1); }
@@ -141,45 +181,10 @@ template <class XXX> static inline XXX xDivideUsingShiftSigned(XXX Val, int32 Lo
 {
   //Val>=0 --> Mask= 0; Offset= Bias
   //Val< 0 --> Mask=-1; Offset=-Bias
-  XXX Bias   = (1 << (Log2Divisor - 1));
+  XXX Bias   = (XXX)((XXX)1 << (Log2Divisor - 1));
   XXX Mask   = Val >> (sizeof(XXX) * 8 - 1);
   XXX Offset = (Bias ^ Mask) - Mask;
   return (Val + Offset) >> Log2Divisor;
-}
-
-//===============================================================================================================================================================================================================
-// flt32/64 to int32 rounding
-//===============================================================================================================================================================================================================
-#if X_SIMD_HAS_SSE
-static inline int32 xRoundFlt32ToInt32(flt32 Flt) { return _mm_cvtss_si32(_mm_set_ss(Flt)); }
-static inline int32 xRoundFlt64ToInt32(flt64 Flt) { return _mm_cvtsd_si32(_mm_set_sd(Flt)); }
-#else  //X_SIMD_HAS_SSE
-static inline int32 xRoundFlt32ToInt32(flt32 Flt) { return (int32)(std::round(Flt)); }
-static inline int32 xRoundFlt64ToInt32(flt64 Flt) { return (int32)(std::round(Flt)); }
-#endif //X_SIMD_HAS_SSE
-template <class XXX> static inline int32 xRoundFltToInt32(XXX Flt);
-template <> inline int32 xRoundFltToInt32(flt32 Flt) { return xRoundFlt32ToInt32 (Flt); }
-template <> inline int32 xRoundFltToInt32(flt64 Flt) { return xRoundFlt64ToInt32(Flt); }
-
-//===============================================================================================================================================================================================================
-// flt32/64 madness
-//===============================================================================================================================================================================================================
-//https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
-//https://stackoverflow.com/questions/17333/what-is-the-most-effective-way-for-float-and-double-comparison
-
-template<typename XXX> static bool xIsApproximatelyEqual(XXX a, XXX b, XXX Tolerance = 8*std::numeric_limits<XXX>::epsilon())
-{
-  XXX Diff = std::fabs(a - b); if(Diff <= Tolerance || Diff < std::fmax(std::fabs(a), std::fabs(b)) * Tolerance) { return true; }
-  return false;
-}
-template<typename XXX> static inline bool xIsApproximatelyZero(XXX a, XXX Tolerance = 8*std::numeric_limits<XXX>::epsilon()) { return (std::fabs(a           ) <= Tolerance); }
-template<typename XXX> static inline bool xIsApproximatelyOne (XXX a, XXX Tolerance = 8*std::numeric_limits<XXX>::epsilon()) { return (std::fabs(a - (XXX)1.0) <= Tolerance); }
-
-template<typename XXX> static inline XXX xRoundValuesCloseToZeroOrOne(XXX a, XXX Tolerance = 8*std::numeric_limits<XXX>::epsilon())
-{
-  if     ( xIsApproximatelyZero(a, Tolerance)) { return (XXX)0.0; }
-  else if( xIsApproximatelyOne (a, Tolerance)) { return (XXX)1.0; }
-  else                                         { return a       ; }
 }
 
 //===============================================================================================================================================================================================================
@@ -197,6 +202,10 @@ static inline uint64 xFastLog2(uint64 Value) { assert(Value > 0); return 63 - __
 static inline uint32 xFastLog2(uint32 Value) { assert(Value > 0); unsigned long Log2; _BitScanReverse  (&Log2, (uint32)Value); return Log2; }
 static inline uint64 xFastLog2(uint64 Value) { assert(Value > 0); unsigned long Log2; _BitScanReverse64(&Log2, (uint64)Value); return Log2; }
     #endif //X_SIMD_HAS_AVX
+  #endif 
+  #if defined(X_PMBB_ARCH_ARM64) && defined(X_PMBB_COMPILER_MSVC)
+static inline uint32 xFastLog2(uint32 Value) { assert(Value > 0); return 31 - _CountLeadingZeros  (Value); }
+static inline uint64 xFastLog2(uint64 Value) { assert(Value > 0); return 63 - _CountLeadingZeros64(Value); }
   #endif 
   #if defined(X_PMBB_COMPILER_GCC) || defined(X_PMBB_COMPILER_CLANG)
 static inline uint32 xFastLog2(uint32 Value) { assert(Value > 0); return 31 - __builtin_clz  (Value); }
@@ -261,10 +270,11 @@ enum class eCmp : int32 //component identifier
   CB = 1,     //Chroma Cb (U)
   CR = 2,     //Chroma Cr (V)
 
-  //R G B
+  //R G B (A)
   R = 0,
   G = 1,
   B = 2,
+  A = 3,
 };
 
 enum class eCrF : int16 //chroma format
@@ -298,8 +308,8 @@ enum class eClrSpcLC : int32 //colorspaces using luma and chromas
   INVALID   = -1,
   //standardized YCbCr
   BT601     = 0,
-  SMPTE170M = 0,
-  JPEG      = 0,
+  SMPTE170M = 0, //alias
+  JPEG      = 0, //alias
   BT709     = 1,
   SMPTE240M = 2,
   BT2020    = 3,
@@ -312,13 +322,13 @@ enum class eClrSpcLC : int32 //colorspaces using luma and chromas
 
 enum class eMrgExt : int32 //picture margin extension mode // trying to be consistent with numpy.pad and scipy.ndimage.generic_filter
 {
-  INVALID   = -1,
-  None      = 0,
-  Edge      = 1, Nearest = 1, //( a a a a | a b c d | d d d d ) //numpy-edge     , scipy-nearest   
-  Symmetric = 2,              //( d c b a | a b c d | d c b a ) //numpy-symmetric, scipy-reflect
-  Reflect   = 3,              //(   d c b | a b c d | c b a   ) //numpy-reflect  , scipy-mirror
-  Constant  = 4,              //( k k k k | a b c d | k k k k )
-  Zero      = 5,              //( 0 0 0 0 | a b c d | 0 0 0 0 )
+  INVALID  = -1,
+  None     = 0,
+  Nearest  = 1,  //( a a a | a b c d | d d d ) //scipy-nearest, numpy-edge       
+  Reflect  = 2,  //( c b a | a b c d | d c b ) //scipy-reflect, numpy-symmetric
+  Mirror   = 3,  //( d c b | a b c d | c b a ) //scipy-mirror , numpy-reflect  
+  Constant = 4,  //( k k k | a b c d | k k k )
+  Zero     = 5,  //( 0 0 0 | a b c d | 0 0 0 )
 };
 
 enum class eActn : int32
@@ -343,6 +353,7 @@ enum class eFileFmt : int32
   INVALID = -1,
   RAW,
   PNG,
+  BMP,
 };
 
 //===============================================================================================================================================================================================================

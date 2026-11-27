@@ -1,13 +1,26 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #include "xThreadPool.h"
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+#include "xCoreAffinity.h"
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
 
 using namespace std::chrono_literals;
 
 namespace PMBB_NAMESPACE {
+
+//===============================================================================================================================================================================================================
+
+void xThreadPool::xTaskBase::StarterFunction(xTaskBase* WorkerTask, int32 ThreadIdx)
+{
+  assert(WorkerTask->m_Status == xTaskBase::eStatus::Waiting);
+  WorkerTask->m_Status = xTaskBase::eStatus::Processed;
+  WorkerTask->WorkingFunction(ThreadIdx);
+  WorkerTask->m_Status = xTaskBase::eStatus::Completed;
+}
 
 //===============================================================================================================================================================================================================
 
@@ -18,6 +31,39 @@ void xThreadPool::create(int32 NumThreads, int32 WaitingQueueSize)
 
   m_NumThreads = NumThreads;
   m_WaitingTasks.create(WaitingQueueSize, true);
+
+  std::atomic_thread_fence(std::memory_order_seq_cst);
+
+  for(int32 i=0; i<m_NumThreads; i++)
+  {
+    std::packaged_task<uint32(xThreadPool*)> PackagedTask(xThreadStarter);
+    m_Future.push_back(PackagedTask.get_future());
+    std::thread Thread = std::thread(std::move(PackagedTask), this);
+    m_ThreadId.push_back(Thread.get_id());
+    m_Thread  .push_back(std::move(Thread));      
+  }
+
+  std::atomic_thread_fence(std::memory_order_seq_cst);
+  
+  m_Event.set();
+}
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+void xThreadPool::create(const std::vector<int32>& CoreIdxs, const xCoreInfo* CoreInfos, int32 WaitingQueueSize)
+{
+  int32 NumThreads = (int32)CoreIdxs.size();
+
+  assert(NumThreads      > 0);
+  assert(WaitingQueueSize > 0);
+
+  m_NumThreads = NumThreads;
+  m_WaitingTasks.create(WaitingQueueSize, true);
+
+  for(int32 i = 0; i < m_NumThreads; i++)
+  {
+    m_CoreInfos.push_back(CoreInfos + CoreIdxs[i]);
+  }
+
+  std::atomic_thread_fence(std::memory_order_seq_cst);
 
   for(int32 i=0; i<m_NumThreads; i++)
   {
@@ -30,6 +76,7 @@ void xThreadPool::create(int32 NumThreads, int32 WaitingQueueSize)
   
   m_Event.set();
 }
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
 void xThreadPool::destroy()
 {
   bool AnyActive = false;
@@ -95,6 +142,11 @@ uint32 xThreadPool::xThreadFunc()
   m_Event.wait();
   std::thread::id ThreadId = std::this_thread::get_id();
   int32 ThreadIdx = (int32)(std::find(m_ThreadId.begin(), m_ThreadId.end(), ThreadId) - m_ThreadId.begin());
+
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  if(!m_CoreInfos.empty()) { xCoreAffinity::pinCurrentThreadToCore(m_CoreInfos[ThreadIdx]); }
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+
   while(1)
   {    
     xTaskBase* Task = m_WaitingTasks.removeWait();
@@ -103,16 +155,6 @@ uint32 xThreadPool::xThreadFunc()
     m_CompletedTasks.at(Task->getClientId()).insertWait(Task);
   }
   return EXIT_SUCCESS;
-}
-
-//===============================================================================================================================================================================================================
-
-void xThreadPool::xTaskBase::StarterFunction(xTaskBase* WorkerTask, int32 ThreadIdx)
-{
-  assert(WorkerTask->m_Status == xTaskBase::eStatus::Waiting);
-  WorkerTask->m_Status = xTaskBase::eStatus::Processed;
-  WorkerTask->WorkingFunction(ThreadIdx);
-  WorkerTask->m_Status = xTaskBase::eStatus::Completed;
 }
 
 //===============================================================================================================================================================================================================
@@ -171,10 +213,10 @@ void xThreadPoolInterfaceFunction::addWaitingTask(tFunct Function)
 { 
   //inactive xThreadPoolInterface will execute function taks in calling thread context
   //allows to simplity code and avoid duplicating threaded and non-theaded variants
-  if(!isActive()) { Function(0); return; }
+  if X_ATTR_UNLIKELY(!isActive()) { Function(0); return; }
 
   tTaskF* Task = nullptr;
-  if(!m_UnusedTasks.empty())
+  if X_ATTR_LIKELY (!m_UnusedTasks.empty())
   { 
     Task = m_UnusedTasks.back(); m_UnusedTasks.pop_back();
     Task->setFunction(m_ClientIdx, m_Priority, Function);
@@ -189,13 +231,12 @@ void xThreadPoolInterfaceFunction::waitUntilTasksFinished(int32 NumTasksToWaitFo
 {
   //inactive xThreadPoolInterface will execute function taks in calling thread context
   //allows to simplity code and avoid duplicating threaded and non-theaded variants
-  if(!isActive()) { return; };
-
-  if(m_StoredTasks.size()) { assert(0); abort(); }
-
-  m_StoredTasks.resize(NumTasksToWaitFor, nullptr);
-
-  m_ThreadPool->receiveTasks(m_StoredTasks.data(), NumTasksToWaitFor, m_ClientIdx);
+  if X_ATTR_LIKELY (isActive())
+  {
+    if(m_StoredTasks.size()) { assert(0); abort(); }
+    m_StoredTasks.resize(NumTasksToWaitFor, nullptr);
+    m_ThreadPool->receiveTasks(m_StoredTasks.data(), NumTasksToWaitFor, m_ClientIdx);
+  }
 
   for(int32 TaskId=0; TaskId < NumTasksToWaitFor; TaskId++)
   {
@@ -231,15 +272,15 @@ int32 xThreadPoolInterfaceFunction::submitStoredTasks()
 
   int32 NumStoredTasks = (int32)m_StoredTasks.size();
 
-  if(isActive())
+  if X_ATTR_LIKELY (isActive())
   {
-    m_ThreadPool->submitTasks(m_StoredTasks.data(), (int32)m_StoredTasks.size());    
+    m_ThreadPool->submitTasks(m_StoredTasks.data(), (int32)m_StoredTasks.size());
+    m_StoredTasks.clear();
   }
   else
   {
     for(int32 i = 0; i < NumStoredTasks; i++) { m_StoredTasks[i]->StarterFunction(m_StoredTasks[i], 0); }
-  }
-  m_StoredTasks.clear();
+  }  
 
   return NumStoredTasks;
 }

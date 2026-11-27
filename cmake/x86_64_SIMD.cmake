@@ -4,10 +4,82 @@ include(CheckCXXSourceCompiles)
 function (detect_host_x86_64_MFL HOST_x86_64_MFL)
 
   #=========================================================================================================================================
+  # Check for znver4 support 
+  if(PMBB_ENABLE_EXPERIMENTAL)
+  check_cxx_source_runs([=[
+    #include <iostream>
+    #include <vector>
+    #include <string>
+    #include <cstring>
+    #include <cstdint>
+
+    #if defined(__GNUC__) || defined(__clang__)
+    #include <cpuid.h>
+    #elif defined(_MSC_VER)
+    #include <intrin.h>
+    #endif
+
+    void xCPUID(uint32_t RegistersTable[4], uint32_t Leaf, uint32_t SubLeaf=0)
+    {
+    #if defined(__GNUC__) || defined(__clang__)    
+      __get_cpuid_count(Leaf, SubLeaf, RegistersTable + c_RegEAX, RegistersTable + c_RegEBX, RegistersTable + c_RegECX, RegistersTable + c_RegEDX);
+    #elif defined(_MSC_VER)
+      __cpuidex((int*)RegistersTable, Leaf, SubLeaf);
+    #else
+      #error "Unknown compiler"
+    #endif
+    }
+
+    int main() 
+    {      
+      uint32_t REG[4];
+
+      //Check vendor
+      xCPUID(REG, 0);
+      char Vendor[13] = { 0};
+      std::memcpy(&Vendor[0], &REG[1], 4);
+      std::memcpy(&Vendor[4], &REG[3], 4);
+      std::memcpy(&Vendor[8], &REG[2], 4);
+      std::cout << "Vendor " << Vendor << std::endl;
+      if (std::string(Vendor) != "AuthenticAMD") return 1;
+
+      //Check family and model
+      xCPUID(REG, 1);
+      uint32_t Data       = REG[0];
+      uint32_t FamilyExt  = (Data >> 20) & 0xFF;
+      uint32_t ModelExt   = (Data >> 16) & 0xF;
+      uint32_t FamilyBase = (Data >>  8) & 0xF;
+      uint32_t ModelBase  = (Data >>  4) & 0xF;
+      uint32_t Family     = FamilyBase + (FamilyBase == 15 ? FamilyExt : 0);
+      uint32_t Model      = FamilyBase == 6 || FamilyBase == 15 ? (ModelExt << 4) + ModelBase : ModelBase;
+
+      if (Family == 0x19)
+      {
+        if((Model >= 0x10 && Model <= 0x1F) || (Model >= 0x60 && Model <= 0xAF))
+        {
+          return 0;
+        }
+      }
+      else if (Family > 0x19)
+      {
+        return 0;
+      }
+      return 1;
+    }
+    ]=] DETECTED_ZNVER4)
+    #message(STATUS "DETECTED_ZNVER4    = ${DETECTED_ZNVER4}")
+
+  if(${DETECTED_ZNVER4})
+    set(${HOST_x86_64_MFL} "ZenVer4" PARENT_SCOPE)
+    return()
+  endif() 
+  endif() #PMBB_ENABLE_EXPERIMENTAL
+
+  #=========================================================================================================================================
   # Check for AVX512 support
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  if(PMBB_COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_REQUIRED_FLAGS "-skylake-avx512")
-  elseif(MSVC)
+  elseif(PMBB_COMPILER_IS_MSVC)
     set(CMAKE_REQUIRED_FLAGS "/arch:AVX512")
   endif()
 
@@ -29,9 +101,9 @@ function (detect_host_x86_64_MFL HOST_x86_64_MFL)
 
   #=========================================================================================================================================
   # Check for AVX2 support
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  if(PMBB_COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_REQUIRED_FLAGS "-mavx2")
-  elseif(MSVC)
+  elseif(PMBB_COMPILER_IS_MSVC)
     set(CMAKE_REQUIRED_FLAGS "/arch:AVX2")
   endif()
 
@@ -53,9 +125,9 @@ function (detect_host_x86_64_MFL HOST_x86_64_MFL)
 
   #=========================================================================================================================================
   # Check for SSE4.2 support
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  if(PMBB_COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_REQUIRED_FLAGS "-msse4.2")
-  elseif(MSVC)
+  elseif(PMBB_COMPILER_IS_MSVC)
     set(CMAKE_REQUIRED_FLAGS "/arch:SSE4.2")
   endif()
 
@@ -86,9 +158,9 @@ function (detect_host_x86_64_MFL HOST_x86_64_MFL)
   #=========================================================================================================================================
   # Check for SSE2 support
 
-  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  if(PMBB_COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_REQUIRED_FLAGS "-msse2")
-  elseif(MSVC)
+  elseif(PMBB_COMPILER_IS_MSVC)
     set(CMAKE_REQUIRED_FLAGS "/arch:SSE2")
   endif()
 

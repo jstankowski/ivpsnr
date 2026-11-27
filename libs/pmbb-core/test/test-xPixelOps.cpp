@@ -1,5 +1,6 @@
 ﻿/*
     SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2025 Patrycja Kaźmierczak <patrycja.kazmierczak@student.put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -9,18 +10,18 @@
 #include <functional>
 #include <random>
 
-#include "../src/xCommonDefCORE.h"
-#include "../src/xPixelOps.h"
-#include "../src/xPic.h"
-#include "../src/xPlane.h"
-#include "../src/xTestUtils.h"
+#include "xCommonDefCORE.h"
+#include "xPixelOps.h"
+#include "xPic.h"
+#include "xPlane.h"
+#include "xTestUtils.h"
 #include "xTimeUtils.h"
 
 using namespace PMBB_NAMESPACE;
 
 //===============================================================================================================================================================================================================
 
-static const std::vector<int32> c_Dimms = { 63, 64, 65, 128, 127, 129, 255, 256, 257 };
+static const std::vector<int32> c_Dimms = { 24, 48, 63, 64, 65, 80, 128, 127, 129, 255, 256, 257 };
 static const std::vector<int32> c_Margs = { 0, 4, 32 };
 static const std::vector<int32> c_BitDs = { 8, 10, 12, 14 };
 static constexpr int32          c_DefBitDepth    = 14;
@@ -408,14 +409,18 @@ void testCountNonZero(fCountNonZero CountNonZero)
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 2);
         P->accessPel({ 1, 1 }) = 1;
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 3);
-        P->accessPel({ 34, 19 }) = 1;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 4);
         P->accessPel({ x - 1, 0 }) = 1;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 5);
+        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 4);
         P->accessPel({ 0, y - 1 }) = 1;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 6);
+        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 5);
         P->accessPel({ x-1, y-1 }) = 1;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 7);
+        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 6);
+        if(x >= 35 && y >= 20)
+        {
+          P->accessPel({ 34, 19 }) = 1;
+          CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == 7);
+        }
+
 
         //almost all
         P->fill(c_DefMaxValue);
@@ -426,14 +431,18 @@ void testCountNonZero(fCountNonZero CountNonZero)
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 2);
         P->accessPel({ 1, 1 }) = 0;
         CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 3);
-        P->accessPel({ 34, 19 }) = 0;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 4);
         P->accessPel({ x - 1, 0 }) = 0;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 5);
+        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 4);
         P->accessPel({ 0, y - 1 }) = 0;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 6);
+        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 5);
         P->accessPel({ x - 1, y - 1 }) = 0;
-        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 7);
+        CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 6);
+        if(x >= 35 && y >= 20)
+        {
+          P->accessPel({ 34, 19 }) = 0;
+          CHECK(CountNonZero(P->getAddr(), P->getStride(), P->getWidth(), P->getHeight()) == Area - 7);
+        }
+
 
         //random
         P->fill(0);
@@ -573,5 +582,20 @@ TEST_CASE("xPixelOpsAVX512")
   testCompareEqual  (&xPixelOpsAVX512::CompareEqual                                );
 }
 #endif //X_SIMD_CAN_USE_AVX512
+
+#if X_SIMD_CAN_USE_NEON
+TEST_CASE("xPixelOpsNEON")
+{
+  testCvt           (static_cast<pCvtU8toU16>(&xPixelOpsNEON::Cvt), static_cast<pCvtU16toU8>(&xPixelOpsNEON::Cvt));
+  testResample      (&xPixelOpsNEON::UpsampleHV  ,&xPixelOpsNEON::DownsampleHV, { 2,2 });
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsNEON::Cvt), &xPixelOpsNEON::CvtUpsampleHV, &xPixelOpsNEON::CvtDownsampleHV, { 2,2 });
+  testResample      (&xPixelOpsNEON::UpsampleH, &xPixelOpsNEON::DownsampleH, { 2,1 } );
+  testCvtResample   (static_cast<pCvtU16toU8>(&xPixelOpsNEON::Cvt), &xPixelOpsNEON::CvtUpsampleH, &xPixelOpsNEON::CvtDownsampleH, { 2,1 });
+  testRearrange     (&xPixelOpsNEON::AOS4fromSOA3, &xPixelOpsNEON::SOA3fromAOS4);
+  testCheckIfInRange(&xPixelOpsNEON::CheckIfInRange                            );
+  testCountNonZero  (&xPixelOpsNEON::CountNonZero                              );
+  testCompareEqual  (&xPixelOpsNEON::CompareEqual                              );
+}
+#endif //X_SIMD_CAN_USE_NEON
 
 //===============================================================================================================================================================================================================

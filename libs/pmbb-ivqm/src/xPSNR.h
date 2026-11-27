@@ -1,10 +1,9 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
-
 #include "xCommonDefIVQM.h"
 #include "xMetricCommon.h"
 #include "xPic.h"
@@ -37,10 +36,10 @@ public:
   flt64V4  calcPicPSNRM (const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, int32 NumNonMasked = NOT_VALID);
 
 protected:
-  uint64V4      xCalcPicSSD  (const xPicP* Tst, const xPicP* Ref);
-  uint64V4      xCalcPicSSDM (const xPicP* Tst, const xPicP* Ref, const xPicP* Msk);
-  static uint64 xCalcCmpSSD  (const xPicP* Tst, const xPicP* Ref,                   eCmp CmpId);
-  static uint64 xCalcCmpSSDM (const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId);
+  uint64V4      xCalcPicSSD (const xPicP* Tst, const xPicP* Ref);
+  uint64V4      xCalcPicSSDM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk);
+  static uint64 xCalcCmpSSD (const xPicP* Tst, const xPicP* Ref,                   eCmp CmpId);
+  static uint64 xCalcCmpSSDM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, eCmp CmpId);
 
 public:
   flt64V4 CalcMSEsFromSSDs       (flt64V4 SSDs , int64 Area                                                          );
@@ -52,6 +51,9 @@ public:
   static flt64 CalcPSNRfromSSD      (flt64 SSD , int64 Area,         int32 BitDepthPic                   );
   static flt64 CalcMSEfromMaskedSSD (flt64 SSDM, int64 NumNonMasked,                    int32 BitDepthMsk);
   static flt64 CalcPSNRfromMaskedSSD(flt64 SSDM, int64 NumNonMasked, int32 BitDepthPic, int32 BitDepthMsk);
+
+  static flt64 CalcAvgPSNRinPSNRDomain(const flt64V4& CmpPSNRs, const int32V4& CmpWeights);
+  static flt64 CalcAvgPSNRinMSEDomain (const flt64V4& CmpPSNRs, const int32V4& CmpWeights);
 
   static flt64 getFakePSNR(int32 Area, int32 BitDepth) { return CalcPSNRfromSSD(1, Area, BitDepth); }
 };

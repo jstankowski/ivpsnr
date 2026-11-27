@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -48,7 +48,7 @@ flt64V4 xPSNR::calcPicMSEM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk,
   if(NumNonMasked < 0) { NumNonMasked = xPixelOps::CountNonZero(Msk->getAddr(eCmp::LM), Msk->getStride(), Msk->getWidth(), Msk->getHeight()); }
 
   uint64V4 SSDMs = xCalcPicSSDM(Tst, Ref, Msk);
-  flt64V4  MSEMs = CalcMSEsFromMaskedSSDs((flt64V4)SSDMs, Tst->getArea(), NumNonMasked, Msk->getBitDepth());
+  flt64V4  MSEMs = CalcMSEsFromMaskedSSDs((flt64V4)SSDMs, Tst->getArea(), NumNonMasked, c_MetricMaskBitDepth);
   return MSEMs;
 }
 flt64V4 xPSNR::calcPicPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, int32 NumNonMasked)
@@ -58,7 +58,7 @@ flt64V4 xPSNR::calcPicPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk
   if(NumNonMasked < 0) { NumNonMasked = xPixelOps::CountNonZero(Msk->getAddr(eCmp::LM), Msk->getStride(), Msk->getWidth(), Msk->getHeight()); }
 
   uint64V4 SSDMs  = xCalcPicSSDM(Tst, Ref, Msk);
-  flt64V4  PSNRMs = CalcPSNRsFromMaskedSSDs((flt64V4)SSDMs, Tst->getArea(), NumNonMasked, Msk->getBitDepth(), Msk->getBitDepth());
+  flt64V4  PSNRMs = CalcPSNRsFromMaskedSSDs((flt64V4)SSDMs, Tst->getArea(), NumNonMasked, Ref->getBitDepth(), c_MetricMaskBitDepth);
 
   if(m_DebugCallbackMSK) { m_DebugCallbackMSK(NumNonMasked); }
 
@@ -74,7 +74,7 @@ uint64V4 xPSNR::xCalcPicSSD(const xPicP* Tst, const xPicP* Ref)
   uint64V4 SSDs = xMakeVec4<uint64>(0);
   for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
   {
-    m_ThPI->storeTask([this, &SSDs, &Tst, &Ref, CmpIdx](int32 /*ThIdx*/) { SSDs[CmpIdx] = xCalcCmpSSD(Tst, Ref, (eCmp)CmpIdx); });
+    m_ThPI->storeTask([&SSDs, &Tst, &Ref, CmpIdx](int32 /*ThIdx*/) { SSDs[CmpIdx] = xCalcCmpSSD(Tst, Ref, (eCmp)CmpIdx); });
   }
   m_ThPI->executeStoredTasks();
 
@@ -87,7 +87,7 @@ uint64V4 xPSNR::xCalcPicSSDM(const xPicP* Tst, const xPicP* Ref, const xPicP* Ms
   uint64V4 SSDMs = xMakeVec4<uint64>(0);
   for(int32 CmpIdx = 0; CmpIdx < m_NumComponents; CmpIdx++)
   {
-    m_ThPI->storeTask([this, &SSDMs, &Tst, &Ref, &Msk, CmpIdx](int32 /*ThIdx*/) { SSDMs[CmpIdx] = xCalcCmpSSDM(Tst, Ref, Msk, (eCmp)CmpIdx); });
+    m_ThPI->storeTask([&SSDMs, &Tst, &Ref, &Msk, CmpIdx](int32 /*ThIdx*/) { SSDMs[CmpIdx] = xCalcCmpSSDM(Tst, Ref, Msk, (eCmp)CmpIdx); });
   }
   m_ThPI->executeStoredTasks();
 
@@ -121,17 +121,7 @@ uint64 xPSNR::xCalcCmpSSDM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk,
   const int32   RefStride = Ref->getStride();
   const int32   MskStride = Msk->getStride();
 
-  //uint64 CmpSSD = 0;
-  //for(int32 y = 0; y < Height; y++)
-  //{
-  //  uint64 RowSSD = xDistortion::CalcWeightedSSD(RefPtr, TstPtr, MskPtr, Width);
-  //  CmpSSD += RowSSD;
-  //  TstPtr += TstStride;
-  //  RefPtr += RefStride;
-  //  MskPtr += MskStride;
-  //}
-
-  uint64 CmpSSD = xDistortion::CalcWeightedSSD(TstPtr, RefPtr, MskPtr, TstStride, RefStride, MskStride, Width, Height);
+  uint64 CmpSSD = xDistortion::CalcWghtSSD(TstPtr, RefPtr, MskPtr, TstStride, RefStride, MskStride, Width, Height);
 
   return CmpSSD;
 }
@@ -213,6 +203,26 @@ flt64 xPSNR::CalcPSNRfromMaskedSSD(flt64 SSDM, int64 NumNonMasked, int32 BitDept
   const int64 MAX         = NumNonMasked * xPow2(MaxValuePic) * MaxValueMsk;
   flt64       PSNRM       = SSDM > 0 ? 10.0 * log10((flt64)MAX / SSDM) : std::numeric_limits<flt64>::max();
   return PSNRM;
+}
+flt64 xPSNR::CalcAvgPSNRinPSNRDomain(const flt64V4& CmpPSNRs, const int32V4& CmpWeights)
+{
+  const int32 SumCmpWeight      = CmpWeights.getSum();
+  const flt64 CmpWeightInvDenom = 1.0 / (flt64)SumCmpWeight;
+
+  flt64 AvgPSNR = (CmpPSNRs * (flt64V4)CmpWeights).getSum() * CmpWeightInvDenom;
+  return AvgPSNR;
+}
+flt64 xPSNR::CalcAvgPSNRinMSEDomain(const flt64V4& CmpPSNRs, const int32V4& CmpWeights)
+{
+  const int32 SumCmpWeight      = CmpWeights.getSum();
+  const flt64 CmpWeightInvDenom = 1.0 / (flt64)SumCmpWeight;
+
+  flt64V4 CmpNrmMSEs = xMakeVec4(0.0);
+  for(int32 c = 0; c < 4; c++) { if(CmpWeights[c] != 0) { CmpNrmMSEs[c] = pow(10.0, -0.1 * CmpPSNRs[c]); } }
+
+  flt64 AvgNrmMSE = (CmpNrmMSEs * (flt64V4)CmpWeights).getSum() * CmpWeightInvDenom;
+  flt64 AvgPSNR   = AvgNrmMSE > 0 ? -10.0 * log10(AvgNrmMSE) : std::numeric_limits<flt64>::max();
+  return AvgPSNR;
 }
 
 //===============================================================================================================================================================================================================

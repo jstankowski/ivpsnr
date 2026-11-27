@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -15,6 +15,13 @@
 #include <set>
 #include <stack>
 #include <future>
+
+#if __has_include("xCoreInfo.h") && __has_include("xCoreAffinity.h")
+#include "xCoreInfo.h"
+#define X_PMBB_THREAD_POOL_HAS_CORE_SELECTION 1
+#else
+#define X_PMBB_THREAD_POOL_HAS_CORE_SELECTION 0
+#endif
 
 namespace PMBB_NAMESPACE {
 
@@ -42,7 +49,7 @@ public:
 
 //===============================================================================================================================================================================================================
 
-class xThreadPool
+class xThreadPoolCmn
 {
 public:
   class xTaskBase
@@ -78,7 +85,7 @@ public:
     virtual void WorkingFunction(int32 ThreadIdx) = 0;
 
   public:
-//             xPoolTask(uintPtr ClientId, int8 Priority) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::UNKNOWN; m_Status = eStatus::UNKNOWN; }
+//           xPoolTask(uintPtr ClientId, int8 Priority) { m_ClientId = ClientId; m_Priority = Priority; m_Type = eType::UNKNOWN; m_Status = eStatus::UNKNOWN; }
     virtual ~xTaskBase() {};
 
     static  void StarterFunction(xTaskBase* PoolTask, int32 ThreadIdx);
@@ -126,10 +133,19 @@ protected:
 public:
   using tWQ = xPtrRing<xTaskBase>;
   using tCQ = xPtrRing<xTaskBase>;
+};
 
+//===============================================================================================================================================================================================================
+
+class xThreadPool : public xThreadPoolCmn
+{
 protected:
   //threads data
   int32                            m_NumThreads;
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  //simple core selection
+  std::vector<const xCoreInfo*>    m_CoreInfos;
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
   xEvent                           m_Event;
   std::vector<std::future<uint32>> m_Future;
   std::vector<std::thread        > m_Thread;
@@ -151,8 +167,11 @@ public:
   xThreadPool            (const xThreadPool&) = delete; //delete copy constructor
   xThreadPool& operator= (const xThreadPool&) = delete; //delete assignement operator
 
-  void       create   (int32 NumThreads, int32 WaitingQueueSize);
-  void       destroy  ();
+  void       create (int32 NumThreads, int32 WaitingQueueSize);
+#if X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  void       create (const std::vector<int32>& CoreIdxs, const xCoreInfo* CoreInfos, int32 WaitingQueueSize);
+#endif //X_PMBB_THREAD_POOL_HAS_CORE_SELECTION
+  void       destroy();
              
   int8       registerClient  (int32 CompletedQueueSize);
   bool       unregisterClient(int8  ClientId          );
@@ -162,17 +181,17 @@ public:
   xTaskBase* receiveTask (                              int8 ClientId) { return m_CompletedTasks.at(ClientId).removeWait(); }
   void       receiveTasks(xTaskBase** Tasks, int32 Num, int8 ClientId) { m_CompletedTasks.at(ClientId).removeWait(Tasks, Num); }
 
-  int32      getWaitingQueueCapacity  (             ) { return m_WaitingTasks.getSize(); }
-  int32      getWaitingQueueLoad      (             ) { return m_WaitingTasks.getLoad(); }
-  bool       isWaitingQueueEmpty      (             ) { return m_WaitingTasks.isEmpty(); }
-  bool       isWaitingQueueFull       (             ) { return m_WaitingTasks.isFull (); }
+  int32      getWaitingQueueCapacity  (             ) const { return m_WaitingTasks.getSize(); }
+  int32      getWaitingQueueLoad      (             ) const { return m_WaitingTasks.getLoad(); }
+  bool       isWaitingQueueEmpty      (             ) const { return m_WaitingTasks.isEmpty(); }
+  bool       isWaitingQueueFull       (             ) const { return m_WaitingTasks.isFull (); }
 
-  int32      getCompletedQueueCapacity(int8 ClientId) { return m_CompletedTasks.at(ClientId).getSize(); }
-  int32      getCompletedQueueLoad    (int8 ClientId) { return m_CompletedTasks.at(ClientId).getLoad(); }
-  bool       isCompletedQueueEmpty    (int8 ClientId) { return m_CompletedTasks.at(ClientId).isEmpty(); }
-  bool       isCompletedQueueFull     (int8 ClientId) { return m_CompletedTasks.at(ClientId).isFull (); }
+  int32      getCompletedQueueCapacity(int8 ClientId) const { return m_CompletedTasks.at(ClientId).getSize(); }
+  int32      getCompletedQueueLoad    (int8 ClientId) const { return m_CompletedTasks.at(ClientId).getLoad(); }
+  bool       isCompletedQueueEmpty    (int8 ClientId) const { return m_CompletedTasks.at(ClientId).isEmpty(); }
+  bool       isCompletedQueueFull     (int8 ClientId) const { return m_CompletedTasks.at(ClientId).isFull (); }
 
-  int32      getNumThreads            (             ) { return m_NumThreads; }
+  int32      getNumThreads            (             ) const { return m_NumThreads; }
 };
 
 //===============================================================================================================================================================================================================
@@ -233,23 +252,23 @@ public:
 
   virtual void init    (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks);
   virtual void uninit  ();
-  bool         isActive() { return m_ThreadPool != nullptr; }
+  bool         isActive() const { return m_ThreadPool != nullptr; }
 
-  void   setPriority  (int8  Priority ){ m_Priority = Priority; }
-  int8   getPriority  (               ){ return m_Priority; }
-  void   setNumChunks (int32 NumChunks){ m_NumChunks = NumChunks; }
-  int32  getNumChunks (               ){ return m_NumChunks; }
+  void   setPriority  (int8  Priority )       { m_Priority = Priority; }
+  int8   getPriority  (               ) const { return m_Priority; }
+  void   setNumChunks (int32 NumChunks)       { m_NumChunks = NumChunks; }
+  int32  getNumChunks (               ) const { return m_NumChunks; }
 
   void   submitTask (tTask* Task); // submit new waiting task
   tTask* receiveTask(           ); // receive completed task
 
-  int32  getWaitingQueueLoad  () { return m_ThreadPool->getWaitingQueueLoad(); }
-  bool   isWaitingQueueEmpty  () { return m_ThreadPool->isWaitingQueueEmpty(); }
-  bool   isWaitingQueueFull   () { return m_ThreadPool->isWaitingQueueFull (); }
-  int32  getCompletedQueueLoad() { return m_ThreadPool->getCompletedQueueLoad(m_ClientIdx); }
-  bool   isCompletedQueueEmpty() { return m_ThreadPool->isCompletedQueueEmpty(m_ClientIdx); }
-  bool   isCompletedQueueFull () { return m_ThreadPool->isCompletedQueueFull (m_ClientIdx); }
-  int32  getNumThreads        () { return m_ThreadPool != nullptr ? m_ThreadPool->getNumThreads() : 0; }
+  int32  getWaitingQueueLoad  () const { return m_ThreadPool->getWaitingQueueLoad(); }
+  bool   isWaitingQueueEmpty  () const { return m_ThreadPool->isWaitingQueueEmpty(); }
+  bool   isWaitingQueueFull   () const { return m_ThreadPool->isWaitingQueueFull (); }
+  int32  getCompletedQueueLoad() const { return m_ThreadPool->getCompletedQueueLoad(m_ClientIdx); }
+  bool   isCompletedQueueEmpty() const { return m_ThreadPool->isCompletedQueueEmpty(m_ClientIdx); }
+  bool   isCompletedQueueFull () const { return m_ThreadPool->isCompletedQueueFull (m_ClientIdx); }
+  int32  getNumThreads        () const { return m_ThreadPool != nullptr ? m_ThreadPool->getNumThreads() : 0; }
 
 };
 
@@ -273,6 +292,12 @@ public:
   void init  (xThreadPool* ThreadPool, int32 CompletedQueueSize, int32 NumPreAllocatedFunctionTasks) final;
   void uninit() final;
 
+  //utils
+  int32  getWaitingQueueCapacity  () const { return m_ThreadPool->getWaitingQueueCapacity  (           ); }
+  int32  getCompletedQueueCapacity() const { return m_ThreadPool->getCompletedQueueCapacity(m_ClientIdx); }
+  int32  getMaxNumTasksInBatch    () const { return xMin(getWaitingQueueCapacity(), getCompletedQueueCapacity());}
+
+  //per task interface
   void   addWaitingTask        (tFunct Function);
   void   waitUntilTasksFinished(int32 NumTasksToWaitFor);
 

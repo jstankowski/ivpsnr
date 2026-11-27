@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -26,6 +26,11 @@
   #endif
   #include <dirent.h>
 #endif //X_PMBB_OPERATING_SYSTEM_LINUX
+
+#ifdef X_PMBB_OPERATING_SYSTEM_DARWIN
+  #include <sys/types.h>
+  #include <sys/sysctl.h>
+#endif //X_PMBB_OPERATING_SYSTEM_DARWIN
 
 
 //=============================================================================================================================================================================
@@ -70,9 +75,29 @@ int32_t xDetectCacheLineSize()
     fclose(File);
     if(Result != 1) { return 0; }
   }
+#  if defined(X_PMBB_ARCH_ARM64)
+  else
+  {
+    uint64_t CTR_EL0 = 0;
+    asm volatile ("mrs %0, ctr_el0;" : "=r"(CTR_EL0) :: "memory");
+    uint64_t CTR_DminLine = (CTR_EL0 >> 16) & 0xF;
+    LineSize = (int32_t)(4 << CTR_DminLine);
+  }
+#  endif //defined(X_PMBB_ARCH_ARM64)
+
   CacheLineSize = LineSize;
 
-#endif //X_PMBB_OPERATING_SYSTEM_LINUX
+#elif defined(X_PMBB_OPERATING_SYSTEM_DARWIN)
+
+  int64_t Ret = 0;
+  size_t  Size = sizeof(Ret);
+
+  if(sysctlbyname("hw.cachelinesize", &Ret, &Size, NULL, 0) == 0)
+  {
+    CacheLineSize = (int32_t)Ret;
+  }
+
+#endif //X_PMBB_OPERATING_SYSTEM
 
   return CacheLineSize;
 }
@@ -91,6 +116,16 @@ int64_t xDetectMemoryBasePageSize()
 
   PageSize = sysconf(_SC_PAGE_SIZE);
 
+#elif defined(X_PMBB_OPERATING_SYSTEM_DARWIN)
+
+  int64_t Ret = 0;
+  size_t  Size = sizeof(Ret);
+
+  if(sysctlbyname("hw.pagesize", &Ret, &Size, NULL, 0) == 0)
+  {
+    PageSize = Ret;
+  }
+
 #endif //X_PMBB_OPERATING_SYSTEM_LINUX
 
   return PageSize;
@@ -98,14 +133,18 @@ int64_t xDetectMemoryBasePageSize()
 
 int64_t xDetectMemoryHugePageSize()
 {
+  //https://wiki.debian.org/Hugepages
+  //https://docs.kernel.org/arch/arm64/hugetlbpage.html
+  
   int64_t PageSizeBase = xDetectMemoryBasePageSize();
   if(PageSizeBase == NOT_VALID) { return NOT_VALID;}
+
+  int64_t PageSizeHuge = NOT_VALID;
 
 #if defined(X_PMBB_OPERATING_SYSTEM_WINDOWS)
 
   size_t  LargePageMinimum = (int64_t)GetLargePageMinimum();
-  int64_t PageSizeHuge = LargePageMinimum !=0 ? (int64_t)LargePageMinimum : NOT_VALID;
-  return PageSizeHuge;
+  PageSizeHuge = LargePageMinimum !=0 ? (int64_t)LargePageMinimum : NOT_VALID;
  
 #elif defined(X_PMBB_OPERATING_SYSTEM_LINUX)
 
@@ -114,29 +153,41 @@ int64_t xDetectMemoryHugePageSize()
   #if defined(X_PMBB_ARCH_AMD64)
   ExpectedPageSizes = {2097152 /*2MB*/, 1073741824 /*1GB*/};
   #endif //X_PMBB_ARCH_AMD64
+
+  #if defined(X_PMBB_ARCH_ARM64)
+  switch(PageSizeBase)
+  {
+    case 4096 /* 4K*/: ExpectedPageSizes = {2097152   /*2  MB*/, 1073741824 /*1GB*/}; break;
+    case 16384/*16K*/: ExpectedPageSizes = {33554432  /*32 MB*/                    }; break;
+    case 65536/*64K*/: ExpectedPageSizes = {536870912 /*512MB*/                    }; break;
+    default: break;
+  }
+  #endif //X_PMBB_ARCH_ARM64
   
   //declared page sizes
   std::vector<int64_t> KnownPageSizes;  
   //search for all available page sizes
   DIR* dirp = opendir("/sys/kernel/mm/hugepages");
-  for(;; )
+  if(dirp != nullptr)
   {
-    struct dirent* dirent = readdir(dirp);
-    if(NULL == dirent) break;
+    for(;; )
+    {
+      struct dirent* dirent = readdir(dirp);
+      if(NULL == dirent) break;
 
-    if('.' == dirent->d_name[0]) continue;
-    char* p = strchr(dirent->d_name, '-');
-    if(NULL == p) continue;
+      if('.' == dirent->d_name[0]) continue;
+      char* p = strchr(dirent->d_name, '-');
+      if(NULL == p) continue;
 
-    uint64_t CurrPageSize = 1024ULL * strtoull(p + 1, NULL, 0);
-    KnownPageSizes.push_back((int64_t)CurrPageSize);
-    //MinPageSize = std::min(MinPageSize, CurrPageSize);
+      uint64_t CurrPageSize = 1024ULL * strtoull(p + 1, NULL, 0);
+      KnownPageSizes.push_back((int64_t)CurrPageSize);
+      //MinPageSize = std::min(MinPageSize, CurrPageSize);
+    }
+    closedir(dirp);
   }
-  closedir(dirp);
 
   if(KnownPageSizes.empty()) { return NOT_VALID;}
    
-  int64_t PageSizeHuge = NOT_VALID;
   if(ExpectedPageSizes.empty())
   {
     PageSizeHuge = KnownPageSizes[0];
@@ -153,8 +204,9 @@ int64_t xDetectMemoryHugePageSize()
     }
   }
 
+#endif //X_PMBB_OPERATING_SYSTEM
+
   return PageSizeHuge;
-#endif //X_PMBB_OPERATING_SYSTEM_LINUX
 }
 
 } //end of namespace
@@ -166,24 +218,31 @@ namespace PMBB_BASE {
 // xMemory
 //=============================================================================================================================================================================
 
-const int64  xMemory::c_DetectedCacheLine = xDetectCacheLineSize     ();
-const int64  xMemory::c_DetectedPageBase  = xDetectMemoryBasePageSize();
-const int64  xMemory::c_DetectedPageHuge  = xDetectMemoryHugePageSize();
+#ifdef __cpp_lib_hardware_interference_size
+#if defined (X_PMBB_ARCH_AMD64)
+  static_assert(xMemory::xc_CacheLineSizeDef == std::hardware_constructive_interference_size);
+  static_assert(xMemory::xc_CacheLineSizeDef == std::hardware_destructive_interference_size );
+#elif defined (X_PMBB_ARCH_ARM64)
+  static_assert(xMemory::xc_CacheLineSizeDef == std::hardware_constructive_interference_size);
+  //NOTE: ARM64 defines std::hardware_destructive_interference_size as 256 (A64FX uses 256 byte cache lines), however, cores with cache line different than 64 bytes are exotic. https://github.com/gcc-mirror/gcc/commit/76b75018b3d053a890ebe155e47814de14b3c9fb
+#endif
+#endif
 
-const uint64 xMemory::c_MemSizeCacheLine = c_DetectedCacheLine != NOT_VALID ? c_DetectedCacheLine : 0;
-const uint64 xMemory::c_MemSizePageBase  = c_DetectedPageBase  != NOT_VALID ? c_DetectedPageBase  : 0;
-const uint64 xMemory::c_MemSizePageHuge  = c_DetectedPageHuge  != NOT_VALID ? c_DetectedPageHuge  : 0;
+
+const uint64 xMemory::c_MemSizeCacheLine     = xCvtSize(xDetectCacheLineSize     ());
+const uint64 xMemory::c_MemSizePageBase      = xCvtSize(xDetectMemoryBasePageSize());
+const uint64 xMemory::c_MemSizePageHuge      = xCvtSize(xDetectMemoryHugePageSize());
 
 const uint32 xMemory::c_Log2MemSizeCacheLine = (uint32)xLog2(c_MemSizeCacheLine);
 const uint32 xMemory::c_Log2MemSizePageBase  = (uint32)xLog2(c_MemSizePageBase );
 const uint32 xMemory::c_Log2MemSizePageHuge  = (uint32)xLog2(c_MemSizePageHuge );
 
-const uint32 xMemory::c_SizeMaskCacheLine = (1<<c_Log2MemSizeCacheLine) - 1;
-const uint32 xMemory::c_SizeMaskPageBase  = (1<<c_Log2MemSizePageBase ) - 1;
-const uint32 xMemory::c_SizeMaskPageHuge  = (1<<c_Log2MemSizePageHuge ) - 1;
+const uint32 xMemory::c_SizeMaskCacheLine    = (1<<c_Log2MemSizeCacheLine) - 1;
+const uint32 xMemory::c_SizeMaskPageBase     = (1<<c_Log2MemSizePageBase ) - 1;
+const uint32 xMemory::c_SizeMaskPageHuge     = (1<<c_Log2MemSizePageHuge ) - 1;
 
-const uint32 xMemory::c_AllocThresholdPageBase = c_DetectedPageBase  != NOT_VALID ? xCalcAllocThreshold(c_SizeMaskPageBase) : xCalcAllocThreshold(xc_MemSizePageDef);
-const uint32 xMemory::c_AllocThresholdPageHuge = c_DetectedPageHuge  != NOT_VALID ? xCalcAllocThreshold(c_SizeMaskPageHuge) : std::numeric_limits<uint32>::max();
+const uint32 xMemory::c_AllocThresholdPageBase = c_MemSizePageBase ? xCalcAllocThreshold(c_SizeMaskPageBase) : xCalcAllocThreshold(xc_MemSizePageDef);
+const uint32 xMemory::c_AllocThresholdPageHuge = c_MemSizePageHuge ? xCalcAllocThreshold(c_SizeMaskPageHuge) : std::numeric_limits<uint32>::max();
 
 void* xMemory::xAlignedMallocCacheLine(uintSize Size)
 {

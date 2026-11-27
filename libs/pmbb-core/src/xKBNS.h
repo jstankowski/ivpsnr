@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -14,24 +14,44 @@ namespace PMBB_NAMESPACE {
 // Kahan Babuska Neumaier Sumation - scalar input
 //===============================================================================================================================================================================================================
 
-class xKBNS1_STD
+template <class fltXX> class xKBNS1_T
 {
 protected:
-  flt64 m_s = 0.0;
-  flt64 m_c = 0.0;
+  fltXX m_S = 0.0;
+  fltXX m_C = 0.0;
 
 public:
-  void acc(flt64 v);
-  void acc(const flt64* x, const uintSize n);
+  void acc(fltXX v);
+  void acc(const fltXX* x, const uintSize n);
 
-  xKBNS1_STD& operator += (flt64 v) { acc(v); return *this; }
+  xKBNS1_T& operator += (fltXX v) { acc(v); return *this; }
 
-  inline void  reset () { m_s = 0.0; m_c = 0.0; }
-  inline flt64 result() const { return m_s + m_c; }
+  inline void  reset () { m_S = 0.0; m_C = 0.0; }
+  inline fltXX result() const { return m_S + m_C; }
 
-  static        flt64   Accumulate(const flt64* x, const uintSize n) { xKBNS1_STD KBNS; KBNS.acc(x, n); return KBNS.result(); }
-  static inline flt64   Accumulate(const std::vector<flt64>& Data) { return Accumulate(Data.data(), Data.size()); }
+  static        fltXX   Accumulate(const fltXX* x, const uintSize n) { xKBNS1_T KBNS; KBNS.acc(x, n); return KBNS.result(); }
+  static inline fltXX   Accumulate(const std::vector<fltXX>& Data) { return Accumulate(Data.data(), Data.size()); }
 };
+
+template <class fltXX> void xKBNS1_T<fltXX>::acc(fltXX v)
+{
+  fltXX t = m_S + v;
+  if(std::abs(m_S) >= std::abs(v)) { m_C += ((m_S - t) + v  ); }
+  else                             { m_C += ((v   - t) + m_S); }
+  m_S = t;
+}
+template <class fltXX> void xKBNS1_T<fltXX>::acc(const fltXX* x, const uintSize n)
+{
+  for(uintSize i = 0; i < n; i++)
+  {
+    fltXX t = m_S + x[i];
+    if(std::abs(m_S) >= std::abs(x[i])) { m_C += ((m_S  - t) + x[i]); }
+    else                                { m_C += ((x[i] - t) + m_S ); }
+    m_S = t;
+  }
+}
+
+using xKBNS1_STD = xKBNS1_T<flt64>;
 
 //===============================================================================================================================================================================================================
 

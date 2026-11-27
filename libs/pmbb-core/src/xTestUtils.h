@@ -1,12 +1,13 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
 
-#include "../src/xCommonDefCORE.h"
-#include "../src/xVec.h"
+#include "xCommonDefCORE.h"
+#include "xHelpersFLT.h"
+#include "xVec.h"
 
 namespace PMBB_NAMESPACE {
 
@@ -48,6 +49,7 @@ public:
   template<typename XXX> static bool isEqualValue(const XXX* Src, int32 SrcStride, int32 Width, int32 Height, XXX Value, bool Verbose = false);
 
   template<typename XXX> static bool isSameBuffer(const XXX* Ref,                  const XXX* Cmp,                  uint64 Area,                bool Verbose = false);
+  template<typename XXX> static bool isSameBufferFLT(const XXX* Ref, const XXX* Cmp, uint64 Area, XXX Tolerance, bool Verbose = false);
   template<typename XXX> static bool isSameBuffer(const XXX* Ref, int32 RefStride, const XXX* Cmp, int32 CmpStride, int32 Width, int32 Height, bool Verbose = false);
 
   template<typename XXX> static bool isSimilarBuffer(const XXX* Ref,                  const XXX* Cmp,                  uint64 Area,                XXX Threshold, bool Verbose = false);
@@ -67,7 +69,7 @@ template<typename XXX> uint32 xTestUtils::fillRandom(XXX* Dst, int32 DstStride, 
     for(int32 x = 0; x < Width; x++) 
     { 
       State = xXorShift32(State);
-      Dst[x] = (XXX)(State & MaxValueMask);
+      Dst[x] = (XXX)((State) & MaxValueMask);
     }
     Dst += DstStride;
   }
@@ -130,6 +132,17 @@ template<typename XXX> bool xTestUtils::isSameBuffer(const XXX* Ref, const XXX* 
     if(Ref[i] != Cmp[i])
     {
       if(Verbose) { fmt::print("xTestUtils::isSameBuffer --> discrepancy found at i={} Ref={} Cmp={}\n", i, Ref[i], Cmp[i]); std::fflush(stdout); } return false;
+    }
+  }
+  return true;
+}
+template<typename XXX> bool xTestUtils::isSameBufferFLT(const XXX* Ref, const XXX* Cmp, uint64 Area, XXX Tolerance, bool Verbose)
+{
+  for(uint64 i = 0; i < Area; i++)
+  {
+    if(!xIsApproximatelyEqual(Ref[i], Cmp[i], Tolerance))
+    {
+      if(Verbose) { fmt::print("xTestUtils::isSameBufferFLT --> discrepancy found at i={} Ref={} Cmp={}\n", i, Ref[i], Cmp[i]); std::fflush(stdout); } return false;
     }
   }
   return true;
@@ -227,6 +240,23 @@ public:
 
   static constexpr uint64 min() { return std::numeric_limits<uint64>::min(); }
   static constexpr uint64 max() { return std::numeric_limits<uint64>::max(); }
+};
+
+//===============================================================================================================================================================================================================
+// Procedural image generator
+//===============================================================================================================================================================================================================
+
+class xPerlinNoise
+{
+public:
+  static const std::array<uint8, 512> c_Permutation;
+  static constexpr int32 c_FracBits = 12;
+
+  static int64 xLerp   (int64 a, int64 b, int64 t, int32 Log2Scale);
+  static int32 xFade   (int64 T, int32 Log2Scale);
+  static int32 xDotGrad(uint32 Hash, int32 xf, int32 yf);
+  static int32 PerlinPelI(uint32 CoordX, uint32 CoordY, uint32 Log2Scale, uint32 BitDepth, uint32 Seed);
+  static void  fillPerlinNoiseI(uint16* Dst, int32 DstStride, int32 Width, int32 Height, int32 BitDepth, int32 Headroom, uint32 Seed);
 };
 
 //===============================================================================================================================================================================================================

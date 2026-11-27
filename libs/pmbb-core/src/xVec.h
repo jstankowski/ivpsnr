@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -68,8 +68,8 @@ public:
   inline XXX   getSumPow2() const { return (xPow2(m_V[0]) + xPow2(m_V[1]));}
   inline XXX   getMul    () const { return m_V[0] * m_V[1];}
 
-  inline const  XXX* getElementsPtr() const { return m_V; }
-  inline        XXX* getElementsPtr()       { return m_V; }
+  inline const  XXX* getPtr() const { return m_V; }
+  inline        XXX* getPtr()       { return m_V; }
 
   template <typename YYY> inline YYY getSumCvtPow2() const { return (xPow2((YYY)m_V[0]) + xPow2((YYY)m_V[1]));}
 
@@ -188,8 +188,8 @@ public:
 
   template <typename YYY> inline YYY getSumCvtPow2() const {return (xPow2((YYY)m_V[0]) + xPow2((YYY)m_V[1]) + xPow2((YYY)m_V[2]));}
 
-  inline const  XXX* getElementsPtr() const { return m_V; }
-  inline        XXX* getElementsPtr()       { return m_V; }
+  inline const  XXX* getPtr() const { return m_V; }
+  inline        XXX* getPtr()       { return m_V; }
 
   inline const tVec& operator += (const tVec& Vec3)       {m_V[0]  += Vec3.m_V[0]; m_V[1]  += Vec3.m_V[1]; m_V[2]  += Vec3.m_V[2]; return *this;}  
   inline const tVec& operator -= (const tVec& Vec3)       {m_V[0]  -= Vec3.m_V[0]; m_V[1]  -= Vec3.m_V[1]; m_V[2]  -= Vec3.m_V[2]; return *this;}
@@ -314,8 +314,8 @@ public:
 
   template <typename YYY> inline YYY getSumCvtPow2() const { return (xPow2((YYY)m_V[0]) + xPow2((YYY)m_V[1]) + xPow2((YYY)m_V[2]) + xPow2((YYY)m_V[3])); }
 
-  inline const  XXX* getElementsPtr() const { return m_V; }
-  inline        XXX* getElementsPtr()       { return m_V; }
+  inline const  XXX* getPtr() const { return m_V; }
+  inline        XXX* getPtr()       { return m_V; }
 
   inline const tVec  operator -  () const { return xVec4(-m_V[0], -m_V[1], -m_V[2], -m_V[3]); }
 
@@ -427,17 +427,17 @@ template<typename XXX> static inline xVec4<XXX> xMakeVec4(XXX Value) { return xV
 //===============================================================================================================================================================================================================
 // special rounding routines
 //===============================================================================================================================================================================================================
-template <class XXX> static inline int32V2 xRoundFltToInt32(const xVec2<XXX>& FltV);
-template <> inline int32V2 xRoundFltToInt32(const xVec2<flt32>& FltV) { return { xRoundFlt32ToInt32(FltV[0]), xRoundFlt32ToInt32(FltV[1])}; }
-template <> inline int32V2 xRoundFltToInt32(const xVec2<flt64>& FltV) { return { xRoundFlt64ToInt32(FltV[0]), xRoundFlt64ToInt32(FltV[1])}; }
-
-template <class XXX> static inline int32V3 xRoundFltToInt32(const xVec3<XXX>& FltV);
-template <> inline int32V3 xRoundFltToInt32(const xVec3<flt32>& FltV) { return { xRoundFlt32ToInt32(FltV[0]), xRoundFlt32ToInt32(FltV[1]), xRoundFlt32ToInt32(FltV[2])}; }
-template <> inline int32V3 xRoundFltToInt32(const xVec3<flt64>& FltV) { return { xRoundFlt64ToInt32(FltV[0]), xRoundFlt64ToInt32(FltV[1]), xRoundFlt64ToInt32(FltV[2])}; }
-
-template <class XXX> static inline int32V4 xRoundFltToInt32(const xVec4<XXX>& FltV);
-template <> inline int32V4 xRoundFltToInt32(const xVec4<flt32>& FltV) { return { xRoundFlt32ToInt32(FltV[0]), xRoundFlt32ToInt32(FltV[1]), xRoundFlt32ToInt32(FltV[2]), xRoundFlt32ToInt32(FltV[3])}; }
-template <> inline int32V4 xRoundFltToInt32(const xVec4<flt64>& FltV) { return { xRoundFlt64ToInt32(FltV[0]), xRoundFlt64ToInt32(FltV[1]), xRoundFlt64ToInt32(FltV[2]), xRoundFlt64ToInt32(FltV[3])}; }
+//template <class XXX> static inline int32V2 xRoundFltToI32(const xVec2<XXX>& FltV);
+//template <> inline int32V2 xRoundVecFltToI32(const xVec2<flt32>& FltV) { return { xRoundF32ToI32(FltV[0]), xRoundF32ToI32(FltV[1])}; }
+//template <> inline int32V2 xRoundVecFltToI32(const xVec2<flt64>& FltV) { return { xRoundF64ToI32(FltV[0]), xRoundF64ToI32(FltV[1])}; }
+//
+//template <class XXX> static inline int32V3 xRoundFltToI32(const xVec3<XXX>& FltV);
+//template <> inline int32V3 xRoundVecFltToI32(const xVec3<flt32>& FltV) { return { xRoundF32ToI32(FltV[0]), xRoundF32ToI32(FltV[1]), xRoundF32ToI32(FltV[2])}; }
+//template <> inline int32V3 xRoundVecFltToI32(const xVec3<flt64>& FltV) { return { xRoundF64ToI32(FltV[0]), xRoundF64ToI32(FltV[1]), xRoundF64ToI32(FltV[2])}; }
+//
+//template <class XXX> static inline int32V4 xRoundFltToI32(const xVec4<XXX>& FltV);
+//template <> inline int32V4 xRoundVecFltToI32(const xVec4<flt32>& FltV) { return { xRoundF32ToI32(FltV[0]), xRoundF32ToI32(FltV[1]), xRoundF32ToI32(FltV[2]), xRoundF32ToI32(FltV[3])}; }
+//template <> inline int32V4 xRoundVecFltToI32(const xVec4<flt64>& FltV) { return { xRoundF64ToI32(FltV[0]), xRoundF64ToI32(FltV[1]), xRoundF64ToI32(FltV[2]), xRoundF64ToI32(FltV[3])}; }
 
 //===============================================================================================================================================================================================================
 

@@ -1,5 +1,6 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2025 Patrycja Kaźmierczak <patrycja.kazmierczak@student.put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 #pragma once
@@ -34,6 +35,14 @@
 #define X_CAN_USE_AVX512 0
 #endif
 
+//NEON implementation
+#if X_SIMD_CAN_USE_NEON && __has_include("xPixelOpsNEON.h")
+#define X_CAN_USE_NEON 1
+#include "xPixelOpsNEON.h"
+#else
+#define X_CAN_USE_NEON 0
+#endif
+
 namespace PMBB_NAMESPACE {
 
 //===============================================================================================================================================================================================================
@@ -61,13 +70,15 @@ public:
 
 public:  
   static inline tStr   FindOutOfRange (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth, int32 MsgNumLimit) { return xPixelOpsSTD::FindOutOfRange(Src, Stride, Width, Height, BitDepth, MsgNumLimit); }
-  static inline void   ClipToRange    (uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsSTD::ClipToRange   (Ptr, Stride, Width, Height, BitDepth); }
+  static inline void   ClipToRange    (uint16*       Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth) { xPixelOpsSTD::ClipToRange   (Ptr, Stride, Width, Height, BitDepth); }
   static inline tStr   FindDiscrepancy(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height, int32 MsgNumLimit) { return xPixelOpsSTD::FindDiscrepancy(Tst, Ref, TstStride, RefStride, Width, Height, MsgNumLimit); }
-  static inline void   ExtendMargin   (uint16* Addr, int32 Stride, int32 Width, int32 Height, int32 Margin) { xPixelOpsSTD::ExtendMargin(Addr, Stride, Width, Height, Margin); }
   static inline uint64 CountEqual     (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
   static inline uint64 CountEqualMask (const uint16* Tst, const uint16* Ref, const uint16* Msk, int32 TstStride, int32 RefStride, int32 MskStride, int32 Width, int32 Height) { return xPixelOpsSTD::CountEqualMask(Tst, Ref, Msk, TstStride, RefStride, MskStride, Width, Height); }
+  static inline void   Threshold      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, const uint16 Threshold, const uint16 MaxVal) { xPixelOpsSTD::Threshold(Dst, Src, DstStride, SrcStride, Width, Height, Threshold, MaxVal); }
+  static inline void   ShiftRound     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, int32 DstBitDepth, int32 SrcBitDepth) { xPixelOpsSTD::ShiftRound(Dst, Src, DstStride, SrcStride, Width, Height, DstBitDepth, SrcBitDepth); }
+  static inline void   Maximum        (uint16* Dst, const uint16* SrcA, const uint16* SrcB, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSTD::Maximum(Dst, SrcA, SrcB, DstStride, SrcStride, Width, Height); }
 
-#if   X_CAN_USE_AVX512
+#if X_CAN_USE_AVX512
   
   static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
   static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsAVX512::Cvt          (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
@@ -120,6 +131,24 @@ public:
   static inline void  SOA3fromAOS4   (uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsSSE::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
   static inline int32 CountNonZero   (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsSSE::CountNonZero(Src, SrcStride, Width, Height); }
   static inline bool  CompareEqual   (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsSSE::CompareEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
+
+#elif X_CAN_USE_NEON
+
+  static inline void  Cvt            (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsNEON::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  Cvt            (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width   , int32 Height   ) { xPixelOpsNEON::Cvt            (Dst, Src, DstStride, SrcStride, Width   , Height   ); }
+  static inline void  UpsampleHV     (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::UpsampleHV     (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleHV   (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::DownsampleHV   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleHV  (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::CvtUpsampleHV  (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleHV(uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::CvtDownsampleHV(Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  UpsampleH      (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::UpsampleH      (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtUpsampleH   (uint16* Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::CvtUpsampleH   (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  DownsampleH    (uint16* Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::DownsampleH    (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }
+  static inline void  CvtDownsampleH (uint8*  Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight) { xPixelOpsNEON::CvtDownsampleH (Dst, Src, DstStride, SrcStride, DstWidth, DstHeight); }  
+  static inline bool  CheckIfInRange (const uint16* Src, int32 SrcStride, int32 Width, int32 Height, int32 BitDepth) { return xPixelOpsNEON::CheckIfInRange(Src, SrcStride, Width, Height, BitDepth); }
+  static inline void  AOS4fromSOA3   (uint16* DstABCD, const uint16* SrcA, const uint16* SrcB, const uint16* SrcC, uint16 ValueD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsNEON::AOS4fromSOA3(DstABCD, SrcA, SrcB, SrcC, ValueD, DstStride, SrcStride, Width, Height); }
+  static inline void  SOA3fromAOS4   (uint16* DstA, uint16* DstB, uint16* DstC, const uint16* SrcABCD, int32 DstStride, int32 SrcStride, int32 Width, int32 Height) { xPixelOpsNEON::SOA3fromAOS4(DstA, DstB, DstC, SrcABCD, DstStride, SrcStride, Width, Height); }
+  static inline int32 CountNonZero   (const uint16* Src, int32 SrcStride, int32 Width, int32 Height) { return xPixelOpsNEON::CountNonZero(Src, SrcStride, Width, Height); }
+  static inline bool  CompareEqual   (const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height) { return xPixelOpsNEON::CompareEqual(Tst, Ref, TstStride, RefStride, Width, Height); }
 
 #else 
 
@@ -192,7 +221,7 @@ template <typename PelType> inline void xPixelOps::Fill(PelType* restrict Dst, c
   {
     for(int32 y = 0; y < Height; y++)
     {
-      memset(Dst, 0, Width * sizeof(PelType));
+      memset((void*)Dst, 0, Width * sizeof(PelType));
       Dst += DstStride;
     }
   }
@@ -234,3 +263,4 @@ template <typename PelType> inline void xPixelOps::Zero(PelType* restrict Dst, i
 #undef X_CAN_USE_SSE
 #undef X_CAN_USE_AVX
 #undef X_CAN_USE_AVX512
+#undef X_CAN_USE_NEON

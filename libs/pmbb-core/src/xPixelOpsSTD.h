@@ -24,6 +24,9 @@ public:
   static void   DownsampleH    (uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight);
   static void   CvtUpsampleH   (uint16* restrict Dst, const uint8*  Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight);
   static void   CvtDownsampleH (uint8*  restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 DstWidth, int32 DstHeight);
+  static void   Threshold      (uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, const uint16 Threshold, const uint16 MaxVal);
+  static void   ShiftRound     (uint16* restrict Dst, const uint16* Src, int32 DstStride, int32 SrcStride, int32 Width, int32 Height, int32 DstBitDepth, int32 SrcBitDepth);
+  static void   Maximum        (uint16* restrict Dst, const uint16* SrcA, const uint16* SrcB, int32 DstStride, int32 SrcStride, int32 Width, int32 Height);
   static bool   CheckIfInRange (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth);
   static tStr   FindOutOfRange (const uint16* Src, int32 Stride, int32 Width, int32 Height, int32 BitDepth, int32 MsgNumLimit);
   static void   ClipToRange    (uint16* restrict Ptr, int32 Stride, int32 Width, int32 Height, int32 BitDepth);

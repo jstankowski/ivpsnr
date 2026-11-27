@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -32,6 +32,7 @@ public:
   
   static inline std::string toUpper(const std::string_view Src) { std::string Dst; std::transform(Src.cbegin(), Src.cend(), std::back_inserter(Dst), [](auto C) { return (char)std::toupper(C); }); return Dst; }
   static inline std::string toLower(const std::string_view Src) { std::string Dst; std::transform(Src.cbegin(), Src.cend(), std::back_inserter(Dst), [](auto C) { return (char)std::tolower(C); }); return Dst; }
+
 
   static std::string replaceFirst(const std::string& Source, const std::string& Token, const std::string& ReplaceTo);
   static std::string replaceLast (const std::string& Source, const std::string& Token, const std::string& ReplaceTo);

@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -21,23 +21,28 @@ xCfgINI::xParser::xParser()
 }
 void xCfgINI::xParser::addCmdParm(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, "", 0)); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, "", 0)); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, false, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, "", 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, false, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, "", 0)); }
 }
 void xCfgINI::xParser::addCmdFlag(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, tCSR FlagValue)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, FlagValue, 0)); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, FlagValue, 0)); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, false, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, FlagValue, 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, false, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, FlagValue, 0)); }
 }
 void xCfgINI::xParser::addCmdList(tCSR CmdShrt, tCSR CmdLong, tCSR SectionName, tCSR ParamName, char Separator)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::List, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, "", Separator)); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::List, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, "", Separator)); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::List, false, std::string(c_CmdPrefixShrt) + CmdShrt, SectionName, ParamName, "", Separator)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::List, false, std::string(c_CmdPrefixLong) + CmdLong, SectionName, ParamName, "", Separator)); }
 }
-void xCfgINI::xParser::addCmdFake(tCSR CmdShrt, tCSR CmdLong)
+void xCfgINI::xParser::addCmdFakeParm(tCSR CmdShrt, tCSR CmdLong)
 {
-  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Fake, std::string(c_CmdPrefixShrt) + CmdShrt, "", "", "", 0)); }
-  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Fake, std::string(c_CmdPrefixLong) + CmdLong, "", "", "", 0)); }
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, true, std::string(c_CmdPrefixShrt) + CmdShrt, "", "", "", 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Rglr, true, std::string(c_CmdPrefixLong) + CmdLong, "", "", "", 0)); }
+}
+void xCfgINI::xParser::addCmdFakeFlag(tCSR CmdShrt, tCSR CmdLong)
+{
+  if(!CmdShrt.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, true, std::string(c_CmdPrefixShrt) + CmdShrt, "", "", "", 0)); }
+  if(!CmdLong.empty()) { xAddCmdParam(xCmdParam(xCmdParam::eType::Flag, true, std::string(c_CmdPrefixLong) + CmdLong, "", "", "", 0)); }
 }
 bool xCfgINI::xParser::loadFromCmdln(int argc, const char* argv[], tCSR CfgTokenShort, tCSR CfgTokenLong)
 {
@@ -63,40 +68,43 @@ bool xCfgINI::xParser::loadFromCmdln(int argc, const char* argv[], tCSR CfgToken
         xCmdParam& CmdParam = m_CmdParams[OneArg];
         xParam Param(CmdParam.getParamName());
 
-        if(CmdParam.getType() == xCmdParam::eType::Fake) //fake param - nothing to do here
+        if(CmdParam.getFake()) //fake param - nothing to do here
         {
-          ++i; //skip also param arg
-          continue;
+          if     (CmdParam.getType() == xCmdParam::eType::Flag) {      continue; }
+          else if(CmdParam.getType() == xCmdParam::eType::Rglr) { ++i; continue; } //skip also param arg
         }
-        else if(CmdParam.getType() == xCmdParam::eType::Flag) //flag only
-        { 
-          Param.addArg(CmdParam.getFlagValue());
-        } 
-        else if(CmdParam.getType() == xCmdParam::eType::Rglr)
+        else
         {
-          if(++i < argc)
-          { 
-            std::string Arg = argv[i];
-            Param.addArg(Arg);
-          }
-          else
-          { 
-            m_ParserLog += fmt::sprintf("ERROR ----> missing value for \"%s\"\n", CmdParam.getParamName());
-            return false;
-          }
-        }
-        else if(CmdParam.getType() == xCmdParam::eType::List)
-        {
-          if(++i < argc)
+          if(CmdParam.getType() == xCmdParam::eType::Flag) //flag only
           {
-            std::string Arg = argv[i];
-            stringVx ArgList = xString::split(Arg, CmdParam.getSeparator());
-            Param.setArg(ArgList);
+            Param.addArg(CmdParam.getFlagValue());
           }
-          else
+          else if(CmdParam.getType() == xCmdParam::eType::Rglr)
           {
-            m_ParserLog += fmt::sprintf("ERROR ----> missing value for \"%s\"\n", CmdParam.getParamName());
-            return false;
+            if(++i < argc)
+            {
+              std::string Arg = argv[i];
+              Param.addArg(Arg);
+            }
+            else
+            {
+              m_ParserLog += fmt::sprintf("ERROR ----> missing value for \"%s\"\n", CmdParam.getParamName());
+              return false;
+            }
+          }
+          else if(CmdParam.getType() == xCmdParam::eType::List)
+          {
+            if(++i < argc)
+            {
+              std::string Arg = argv[i];
+              stringVx ArgList = xString::split(Arg, CmdParam.getSeparator());
+              Param.setArg(ArgList);
+            }
+            else
+            {
+              m_ParserLog += fmt::sprintf("ERROR ----> missing value for \"%s\"\n", CmdParam.getParamName());
+              return false;
+            }
           }
         }
 
@@ -154,13 +162,14 @@ bool xCfgINI::xParser::loadFromCmdln(int argc, const char* argv[], tCSR CfgToken
 }
 bool xCfgINI::xParser::loadFromFile(tCSR FileName)
 {
-  if(!xFile::exists(FileName)) { return false; }
+  if(!xFile::exists(FileName)) { m_ParserLog += fmt::format("ERROR ----> config file does not exists \"{}\"\n", FileName); return false; }
 
   std::ifstream File(FileName.c_str(), std::ifstream::in);
   if(File.good() && File.is_open())
   {
     std::string Buffer((std::istreambuf_iterator<char>(File)), std::istreambuf_iterator<char>());
     File.close();
+    Buffer += " \n \n"; //temporary fix for not parsing last line, TODO, TOFIX
     loadFromString(Buffer);
     return true;
   }

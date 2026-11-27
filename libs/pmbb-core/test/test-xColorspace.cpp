@@ -1,5 +1,6 @@
 ﻿/*
     SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2025 Patrycja Kaźmierczak <patrycja.kazmierczak@student.put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -15,6 +16,7 @@
 #include "xPic.h"
 #include "xColorSpace.h"
 #include "xColorSpaceCoeff.h"
+#include "xHelpersFLT.h"
 
 using namespace PMBB_NAMESPACE;
 
@@ -188,5 +190,12 @@ TEST_CASE("xColorSpaceAVX512-I32")
   testColorSpace(xColorSpaceAVX512::ConvertRGB2YCbCr_I32, xColorSpaceAVX512::ConvertYCbCr2RGB_I32);
 }
 #endif //X_SIMD_CAN_USE_AVX512
+
+#if X_SIMD_CAN_USE_NEON
+TEST_CASE("xColorSpaceNEON-I32")
+{
+  testColorSpace(xColorSpaceNEON::ConvertRGB2YCbCr_I32, xColorSpaceNEON::ConvertYCbCr2RGB_I32);
+}
+#endif //X_SIMD_CAN_USE_NEON
 
 //===============================================================================================================================================================================================================

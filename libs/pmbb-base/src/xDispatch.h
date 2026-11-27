@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2025 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 #pragma once
@@ -32,6 +32,30 @@ Usage:
 #endif //X_PMBB_ARCH_AMD64
 
 //===============================================================================================================================================================================================================
+// ARM64
+//===============================================================================================================================================================================================================
+
+#if defined(X_PMBB_ARCH_ARM64)
+
+static const std::string_view HeadString = "PMBB runtime dispatch module for ARM64";
+
+static const std::string_view HelpString =
+R"PMBBRAWSTRING(
+=============================================================================
+PMBB runtime dispatch module for ARM64
+
+Usage:
+
+ Cmd                | Description
+ --DispatchForce      Force dispatcher to selected variant      (optional, default=UNDEFINED)
+ --DispatchVerbose    Verbose level for runtime dispatch module (optional, default=0)
+=============================================================================
+)PMBBRAWSTRING";
+
+#endif //X_PMBB_ARCH_ARM64
+
+
+//===============================================================================================================================================================================================================
 // Common
 //===============================================================================================================================================================================================================
 
@@ -49,7 +73,12 @@ int main(int argc, char* argv[], char* envp[])
   CfgParser->setUnknownCmdParams(true);
   CfgParser->setEmptyCmdParams  (true);
   bool CommandlineResult = CfgParser->loadFromCmdln(argc, const_cast<const char**>(argv));
-  if(!CommandlineResult) { PMBB_BASE::xErrMsg::printError(std::string("! invalid commandline\n") + CfgParser->getParsingLog() + "\n\n", HelpString); return EXIT_FAILURE; }
+  if(!CommandlineResult)
+  {
+    PMBB_BASE::xErrMsg::printError(std::string("! invalid commandline\n") + CfgParser->getParsingLog() + "\n\n", HelpString);
+    fmt::print("Commandline args:\n"); PMBB_BASE::xCfgINI::printCommandlineArgs(argc, const_cast<const char**>(argv));
+    return EXIT_FAILURE;
+  }
 
   std::string LevelOverrideS = CfgParser->getParam1stArg("DispatchForce", PMBB_BASE::xProcInfo::xMflToStr(eMFL::UNDEFINED));
   eMFL        LevelOverride  = PMBB_BASE::xProcInfo::xStrToMfl(LevelOverrideS);

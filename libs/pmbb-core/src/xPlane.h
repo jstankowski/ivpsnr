@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -10,6 +10,7 @@
 #include "xMemory.h"
 #include "xErrMsg.h"
 #include "xPixelOps.h"
+#include "xMarginOps.h"
 #include <type_traits>
 
 namespace PMBB_NAMESPACE {
@@ -39,11 +40,11 @@ public:
 
   void   clear  ();
   void   copy   (const xPlane* Src);
-  void   zero   ();
-  void   fill   (PelType Value);
+  void   zero   (bool IncludeMargin = true);
+  void   fill   (PelType Value, bool IncludeMargin = true);
   bool   check  (const std::string& Name) const;  
-  void   conceal(                       );
-  void   extend (                       );
+  void   conceal();
+  void   extend (eMrgExt MarginExtendMode = eMrgExt::Nearest);
 
   bool   equal  (const xPlane* Ref, bool PrintFirstDiscrepancy) const;
                                    
@@ -53,20 +54,20 @@ public:
   T getMinPelValue() const { return (PelType)0; }
 
   //access picture data
-  inline int32    getStride (                ) const { return m_Stride; }
-  inline int32    getPitch  (                ) const { return 1       ; }  
-  inline T*       getAddr   (                )       { return m_Origin; } 
-  inline const T* getAddr   (                ) const { return m_Origin; }
-  inline int32    getOffset (int32V2 Position) const { return Position.getY() * m_Stride + Position.getX(); }
-  inline T*       getAddr   (int32V2 Position)       { return m_Origin + getOffset(Position); }
-  inline const T* getAddr   (int32V2 Position) const { return m_Origin + getOffset(Position); }
-  inline T*       getRowAddr(int32   y       )       { return m_Origin + y * m_Stride; }
-  inline const T* getRowAddr(int32   y       ) const { return m_Origin + y * m_Stride; }
+  inline int32    getStride (             ) const { return m_Stride; }
+  inline int32    getPitch  (             ) const { return 1       ; }  
+  inline T*       getAddr   (             )       { return m_Origin; } 
+  inline const T* getAddr   (             ) const { return m_Origin; }
+  inline int32    getOffset (int32V2 PosXY) const { return PosXY.getY() * m_Stride + PosXY.getX(); }
+  inline T*       getAddr   (int32V2 PosXY)       { return m_Origin + getOffset(PosXY); }
+  inline const T* getAddr   (int32V2 PosXY) const { return m_Origin + getOffset(PosXY); }
+  inline T*       getRowAddr(int32   y    )       { return m_Origin + y * m_Stride; }
+  inline const T* getRowAddr(int32   y    ) const { return m_Origin + y * m_Stride; }
   //slow pel access
-  inline T&       accessPel(int32V2 Position)       { return *(getAddr() + getOffset(Position)); }
-  inline const T& accessPel(int32V2 Position) const { return *(getAddr() + getOffset(Position)); }
-  inline T&       accessPel(int32   Offset  )       { return *(getAddr() + Offset); }
-  inline const T& accessPel(int32   Offset  ) const { return *(getAddr() + Offset); }
+  inline T&       accessPel(int32V2 PosXY )       { return *(getAddr() + getOffset(PosXY)); }
+  inline const T& accessPel(int32V2 PosXY ) const { return *(getAddr() + getOffset(PosXY)); }
+  inline T&       accessPel(int32   Offset)       { return *(getAddr() + Offset); }
+  inline const T& accessPel(int32   Offset) const { return *(getAddr() + Offset); }
 
   //low level buffer modification / access - dangerous
   inline int64    getBuffNumPels() const { return m_BuffCmpNumPels ; }
@@ -132,15 +133,17 @@ template <typename PelType> void xPlane<PelType>::copy(const xPlane* Src)
   m_Timestamp        = Src->m_Timestamp       ;
   m_IsMarginExtended = Src->m_IsMarginExtended;
 }
-template <typename PelType> void xPlane<PelType>::zero()
+template <typename PelType> void xPlane<PelType>::zero(bool IncludeMargin)
 {
-  std::memset((void*)m_Buffer, 0, m_BuffCmpNumBytes);
-  m_IsMarginExtended = true;
+  if(IncludeMargin) { std::memset((void*)m_Buffer, 0, m_BuffCmpNumBytes)                ; }
+  else              { xPixelOps::Fill<PelType>(m_Origin, 0, m_Stride, m_Width, m_Height); }
+  m_IsMarginExtended = IncludeMargin;
 }
-template <typename PelType> void xPlane<PelType>::fill(PelType Value)
+template <typename PelType> void xPlane<PelType>::fill(PelType Value, bool IncludeMargin)
 {
-  xPixelOps::Fill<PelType>(m_Buffer, Value, m_BuffCmpNumPels);
-  m_IsMarginExtended = true;
+  if(IncludeMargin) { xPixelOps::Fill<PelType>(m_Buffer, Value, m_BuffCmpNumPels)           ; }
+  else              { xPixelOps::Fill<PelType>(m_Origin, Value, m_Stride, m_Width, m_Height); }
+  m_IsMarginExtended = IncludeMargin;
 }
 template <typename PelType> bool xPlane<PelType>::check(const std::string& Name) const
 {
@@ -172,16 +175,9 @@ template <typename PelType> void xPlane<PelType>::conceal()
     assert(0);
   }
 }
-template <typename PelType> void xPlane<PelType>::extend()
+template <typename PelType> void xPlane<PelType>::extend(eMrgExt MarginExtendMode)
 {
-  if constexpr(std::is_same_v<PelType, uint16>)
-  {
-    xPixelOps::ExtendMargin(m_Origin, m_Stride, m_Width, m_Height, m_Margin);
-  }
-  else
-  {
-    assert(0); 
-  }
+  xMarginOps::ExtendMargin(m_Origin, m_Stride, m_Width, m_Height, m_Margin, std::numeric_limits< PelType>::max(), MarginExtendMode);
 }
 template <typename PelType> bool xPlane<PelType>::equal(const xPlane* Ref, bool PrintFirstDiscrepancy) const
 {

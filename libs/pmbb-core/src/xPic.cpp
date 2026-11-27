@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -7,6 +7,7 @@
 #include "xMemory.h"
 #include "xErrMsg.h"
 #include "xPixelOps.h"
+#include "xMarginOps.h"
 #include <cassert>
 #include <cstring>
 
@@ -90,9 +91,12 @@ void xPicP::conceal()
   }
   m_IsMarginExtended = false;
 }
-void xPicP::extend()
+void xPicP::extend(eMrgExt MarginExtendMode)
 {
-  for(int32 c = 0; c < m_NumCmps; c++) { xPixelOps::ExtendMargin(m_Origin[c], m_Stride, m_Width, m_Height, m_Margin); }
+  for(int32 c = 0; c < m_NumCmps; c++)
+  {
+    xMarginOps::ExtendMargin(m_Origin[c], m_Stride, m_Width, m_Height, m_Margin, std::numeric_limits<uint16>::max(), MarginExtendMode);
+  }
   m_IsMarginExtended = true;
 }
 
@@ -247,6 +251,32 @@ void xPicI::rearrangeToPlanar(xPicP* Planar)
   const int32 ExtWidth  = m_Width  + (m_Margin << 1);
   const int32 ExtHeight = m_Height + (m_Margin << 1);
   xPixelOps::SOA3fromAOS4(Planar->getBuffer(eCmp::C0), Planar->getBuffer(eCmp::C1), Planar->getBuffer(eCmp::C2), m_Buffer, Planar->getStride(), m_Stride * c_MaxNumCmps, ExtWidth, ExtHeight);
+}
+void xPicI::rearrangeFromPlanar(const xPicP* Planar, tThPI* TPI, bool ExecuteStoredTasks)
+{
+  assert(isCompatible(Planar));
+  constexpr int32 c_NumRowsInRng = 64;
+  const int32 ExtWidth  = m_Width  + (m_Margin << 1);
+  const int32 ExtHeight = m_Height + (m_Margin << 1);
+
+  for(int32 y = 0; y < ExtHeight; y += c_NumRowsInRng)
+  {
+    TPI->storeTask([this, Planar, ExtWidth, ExtHeight, y, c_NumRowsInRng](int32 /*ThreadIdx*/) //cannot capture by reference since executeStoredTasks can be executed outside function
+      {
+        uint16*       DstPtr    = m_Buffer                    + y * m_Stride * c_MaxNumCmps;
+        const int32   SrcStride = Planar->getStride();
+        const uint16* SrcPtrA   = Planar->getBuffer(eCmp::C0) + y * SrcStride;
+        const uint16* SrcPtrB   = Planar->getBuffer(eCmp::C1) + y * SrcStride;
+        const uint16* SrcPtrC   = Planar->getBuffer(eCmp::C2) + y * SrcStride;
+        const int32   Height    = xMin(y + c_NumRowsInRng, ExtHeight) - y;
+        xPixelOps::AOS4fromSOA3(DstPtr, SrcPtrA, SrcPtrB, SrcPtrC, 0, m_Stride * c_MaxNumCmps, SrcStride, ExtWidth, Height);
+      });
+  }
+  if(ExecuteStoredTasks) { TPI->executeStoredTasks(); }
+}
+void xPicI::rearrangeToPlanar(xPicP* /*Planar*/, tThPI* /*TPI*/, bool /*ExecuteStoredTasks*/)
+{
+
 }
 
 //===============================================================================================================================================================================================================

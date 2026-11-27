@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -75,7 +75,7 @@ public:
   inline void   flush() { if(canWrite()) { m_Stream->flush(); } }
 
 protected:
-  inline void   xPrintError() { fmt::print("ERROR {}", std::strerror(errno)); }
+  inline void   xPrintError() { fmt::print("ERROR(errno)={}", std::strerror(errno)); }
 };
 
 //===============================================================================================================================================================================================================

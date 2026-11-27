@@ -48,6 +48,22 @@ public:
   inline void wait () { m_State.wait(false); if(!m_ManualReset) { m_State.test_and_set(); } }
 };
 
+class xEvent2
+{
+protected:
+  std::atomic_flag m_State;
+  const bool       m_AutoReset;
+
+public:
+  xEvent2(bool InitialState = false, bool AutoReset = false) : m_AutoReset(AutoReset) { if(InitialState) { m_State.test_and_set(); } else { m_State.clear(); } }
+  xEvent2           (const xEvent2&) = delete;
+  xEvent2& operator=(const xEvent2&) = delete;
+
+  inline void set  () { m_State.test_and_set(); m_State.notify_all(); }
+  inline void reset() { m_State.clear(); }
+  inline void wait () { m_State.wait(false); if(m_AutoReset) { m_State.test_and_set(); } }
+};
+
 #else //X_PMBB_CPP20
 
 class xEvent
@@ -63,6 +79,11 @@ public:
   xEvent           (const xEvent&) = delete;
   xEvent& operator=(const xEvent&) = delete;
 
+  inline bool get()
+  {
+    std::lock_guard<std::mutex> LockManager(m_Mutex);
+    return m_State;
+  }
   inline void set()
   {
     std::lock_guard<std::mutex> LockManager(m_Mutex);
@@ -80,6 +101,57 @@ public:
     while(m_State == false) { m_ConditionVariable.wait(LockManager, [&] { return m_State; }); }
     if(!m_ManualReset) { m_State = false; }
   }
+  template<class Rep, class Period> bool wait_for(const std::chrono::duration<Rep, Period>& Duration)
+  {
+    std::unique_lock<std::mutex> LockManager(m_Mutex);
+    bool State = m_ConditionVariable.wait_for(LockManager, Duration, [this] { return m_State; });
+    if(!m_ManualReset && State) { m_State = false; }
+    return State;
+  }
+};
+
+class xEvent2
+{
+protected:
+  bool                    m_State;
+  const bool              m_AutoReset;
+  std::mutex              m_Mutex;
+  std::condition_variable m_ConditionVariable;
+
+public:
+  xEvent2(bool InitialState = false, bool AutoReset = false) : m_State(InitialState), m_AutoReset(AutoReset) { }
+  xEvent2           (const xEvent2&) = delete;
+  xEvent2& operator=(const xEvent2&) = delete;
+
+  inline bool get()
+  {
+    std::lock_guard<std::mutex> LockManager(m_Mutex);
+    return m_State;
+  }
+  inline void set()
+  {
+    std::lock_guard<std::mutex> LockManager(m_Mutex);
+    m_State = true;
+    m_ConditionVariable.notify_all();
+  }
+  inline void reset()
+  {
+    std::lock_guard<std::mutex> LockManager(m_Mutex);
+    m_State = false;
+  }
+  inline void wait()
+  {
+    std::unique_lock<std::mutex> LockManager(m_Mutex);
+    while(m_State == false) { m_ConditionVariable.wait(LockManager, [&] { return m_State; }); }
+    if(m_AutoReset) { m_State = false; }
+  }
+  template<class Rep, class Period> bool wait_for(const std::chrono::duration<Rep, Period>& Duration)
+  {
+    std::unique_lock<std::mutex> LockManager(m_Mutex);
+    bool State = m_ConditionVariable.wait_for(LockManager, Duration, [this] { return m_State; });
+    if(m_AutoReset && State) { m_State = false; }
+    return State;
+  }  
 };
 
 #endif //X_PMBB_CPP20

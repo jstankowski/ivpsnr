@@ -1,11 +1,12 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
 #pragma once
 
 #include "xCommonDefIVQM.h"
+#include "xMultiThreaded.h"
 #include "xVec.h"
 
 namespace PMBB_NAMESPACE {

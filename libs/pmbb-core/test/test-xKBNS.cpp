@@ -74,6 +74,43 @@ flt64 testKBNS4(std::function<flt64V4(const flt64V4*, const uintSize)> Accumulat
   return std::chrono::duration_cast<tDurationS>(D).count();
 }
 
+template <class FLT> std::tuple<flt64, flt64> calcError(uint64 Num, FLT Val)
+{
+  static constexpr uint64 Log2MemLimit = 26;
+  uint64 Log2Num = xFastLog2(Num);
+  uint64 RecNum = (uint64)1 << Log2Num;
+  CHECK(RecNum == Num);
+
+  //avoid excessive memory usage
+  uint64 NumIters = 1;
+  uint64 NumUnits = Num;
+  if(Log2Num > Log2MemLimit)
+  {
+    NumIters = NumUnits >> Log2MemLimit;
+    NumUnits = (uint64)1 << Log2MemLimit;
+  }
+
+  //allocate storage
+  std::vector<FLT> Data(NumUnits);
+  std::fill(Data.begin(), Data.end(), Val);
+
+  flt64         Ref  = (flt64)Num * (flt64)Val;
+  FLT           SumN = 0;
+  xKBNS1_T<FLT> SumK;
+  for(uint64 i = 0; i < NumIters; i++)
+  {
+    for(uint64 u = 0; u < NumUnits; u++)
+    {
+      SumN += Data[u];
+      SumK += Data[u];
+    }
+  }
+  
+  flt64 DeltaN = Ref - (flt64)SumN;
+  flt64 DeltaK = Ref - (flt64)SumK.result();
+  return { std::abs(DeltaN), std::abs(DeltaK) };
+}
+
 //===============================================================================================================================================================================================================
 
 TEST_CASE("xMathUtils::xKBNS1_STD")
@@ -119,5 +156,24 @@ TEST_CASE("xKBNS4_AVX")
   fmt::print("TIME(xKBNS4_AVX) = {}s\n", Time);
 }
 #endif //X_SIMD_CAN_USE_AVX
+
+#if 0
+TEST_CASE("ErrorEstimation")
+{
+  static constexpr uint64 Log2Max = 32;
+  fmt::print("FLT32\n");
+  for(int64 i = 3; i <= Log2Max; i++)
+  {
+    auto [ErrN, ErrK] = calcError<flt32>((uint64)1 << i, (flt32)0.95);
+    fmt::print("2^{:02d}, {}, {}\n", i, ErrN, ErrK);
+  }
+  fmt::print("FLT64\n");
+  for(int64 i = 3; i <= Log2Max; i++)
+  {
+    auto [ErrN, ErrK] = calcError<flt64>((uint64)1 << i, (flt64)0.95);
+    fmt::print("2^{:02d}, {}, {}\n", i, ErrN, ErrK);
+  }
+}
+#endif
 
 //===============================================================================================================================================================================================================

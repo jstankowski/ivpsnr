@@ -1,5 +1,5 @@
 ﻿/*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -997,7 +997,7 @@ int32 xPixelOpsSSE::CountNonZero(const uint16* Src, int32 SrcStride, int32 Width
 }
 bool xPixelOpsSSE::CompareEqual(const uint16* Tst, const uint16* Ref, int32 TstStride, int32 RefStride, int32 Width, int32 Height)
 {
-  if(((uint32)Width & c_RemainderMask8<uint32>) == 0) //Width%16==0 - fast path without tail
+  if(((uint32)Width & c_RemainderMask16<uint32>) == 0) //Width%16==0 - fast path without tail
   {
     for(int32 y = 0; y < Height; y++)
     {

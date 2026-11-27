@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 #=========================================================================================================================================
 # QMIV - Quality Merics for Immersive Video
 #=========================================================================================================================================
-set(APP_NAME "IVPSNR")
+set(APP_NAME "QMIV")
 
-set(APP_DEPENDENCIES "${LIB_PMBB_BASE_NAME}" "${LIB_PMBB_CORE_NAME}" "${LIB_PMBB_SLST_NAME}" "${LIB_PMBB_IVQM_NAME}")
+set(APP_DEPENDENCIES "${LIB_PMBB_BASE_NAME}" "${LIB_PMBB_CORE_NAME}" "${LIB_PMBB_SLST_NAME}" "${LIB_PMBB_IVQM_NAME}" "${LIB_PMBB_QMAU_NAME}")
 set(APP_THIRD_PARTY  "${THIRDPARTY_SPNG_NAME}")
 
 if(NOT PMBB_GENERATE_MULTI_MICROARCH_LEVEL_BINARIES)

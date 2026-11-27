@@ -1,33 +1,56 @@
-# IV-PSNR software with Quality Merics for Immersive Video
+# QMIV framework (former IV-PSNR software)
+Quality Merics for Immersive Video
 
-## 1. Description
+----  
 
-The software calculates number of quality metrics, especially related to assessment of immersive video quality.
+The QMIV framework (successor of the IV-PSNR software) is a set of applications for the objective quality assessment of immersive video and of 3D Gaussian splat representations.
+
+| Application | Description | Documentation |
+|:------------|:------------|:--------------|
+| QMIV             | Calculates quality metrics (IV-PSNR, IV-SSIM, IV-MS-SSIM, PSNR, WS-PSNR, SSIM, MS-SSIM, pVAR) between two video sequences (YUV, PNG or BMP) | [README_QMIV.md](README_QMIV.md) |
+| QMIV-GS          | Renders test and reference 3D Gaussian splat clouds with a built-in CPU renderer and calculates quality metrics between the rendered views | [README_QMIV-GS.md](README_QMIV-GS.md) |
+| QMIV-GS-renderer | Renders views of a 3D Gaussian splat cloud and writes them to files (YUV, PNG or BMP) | [README_QMIV-GSR.md](README_QMIV-GSR.md) |
+
+All applications are built together with CMake (see Section 4), share the implementation of the metrics and of the renderer, and accept the same style of commandline parameters and config files. The documents of the applications describe their parameters and usage. This document contains the information common to all of them: the metrics, the authors, the license, the building instructions and the changelog.
+
+## 1. Metrics
 
 The list of immersive video quality metrics includes: 
-  * IV-PSNR    - Immersive Video - Peak Signal-to-Noise Ratio
-  * IV-SSIM    - Immersive Video - Structural Similarity Index Measure
-  * IV-MS-SSIM - Immersive Video - Multi Scale Structural Similarity Index Measure
+  * IV-PSNR    - Immersive Video - Peak Signal-to-Noise Ratio [IVPSNR]
+  * IV-SSIM    - Immersive Video - Structural Similarity Index Measure [IVSSIM]
+  * IV-MS-SSIM - Immersive Video - Multi Scale Structural Similarity Index Measure [IVMSSSIM]
 
 In addition the software is able to calculate following "general purpose" metrics:
   * PSNR    - Peak Signal-to-Noise Ratio
-  * WS-PSNR - Spherical Weighted - Peak Signal-to-Noise Ratio
+  * WS-PSNR - Spherical Weighted - Peak Signal-to-Noise Ratio [Sun17]
   * SSIM    - Structural Similarity Index Measure
   * MS-SSIM - Multi Scale Structural Similarity Index Measure
+  * pVAR    - Perceptual Variance of Distortion [PVAR] (selected as `PVD` in MetricList)
 
-The idea behind the IV-PSNR mertric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
-**A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**  
+The idea behind the IV-PSNR metric, its detailed description and evaluation can be found in the paper [IVPSNR]:  
+**A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications).**
 
-The idea behind the IV-SSIM mertric, its detailed description and evaluation can be found in the paper [IVSSIM]:  
-**A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090)**  
+The idea behind the IV-SSIM metric, its detailed description and evaluation can be found in the paper [IVSSIM]:  
+**A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-SSIM----The-Structural-Similarity-Metric-for-Immersive-Video).**
 
-The IV-PSNR software and its architecture is described in following paper [IVSOFT]:
-**J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)**
+The idea behind the IV-MS-SSIM metric, its detailed description and evaluation can be found in the paper [IVMSSSIM]:  
+**B. Sojka, J. Stankowski, A. Dziembowski, "Multi-scale structural similarity with geometric alignment for immersive video quality assessment", International Conference on Image Processing, ICIP 2026, Tampere, Finland, 13-17.09.2026. [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=Multi-scale-structural-similarity-with-geometric-alignment-for-immersive-video-quality-assessment).**
+
+The idea behind the pVAR metric, its detailed description and evaluation can be found in the paper [PVAR]:  
+**A. Dziembowski, "pVAR: An ultra low complexity image quality assessment via spatial error variance", IEEE Signal Processing Letters, Vol. 33, 2026, pp. 2710-2714, doi: [10.1109/LSP.2026.3708417](https://doi.org/10.1109/LSP.2026.3708417).**
+
+The QMIV software (former IV-PSNR software) and its architecture is described in following papers [IVSOFT1],[IVSOFT2],[IVSOFT3].  
 
 ## 2. Authors
 
-* Jakub Stankowski   - Poznan University of Technology, Poznań, Poland  
-* Adrian Dziembowski - Poznan University of Technology, Poznań, Poland
+* Jakub Stankowski   - Poznan University of Technology (PUT), Poznań, Poland  
+* Błażej Szydełko    - Poznan University of Technology (PUT), Poznań, Poland  
+* Adrian Dziembowski - Poznan University of Technology (PUT), Poznań, Poland
+
+Credits - PUT students and graduates who contributed to this project:
+
+* Weronika Nowak (IV-SSIM co-development and prototyping)
+* Patrycja Kaźmierczak (ARM64 support & NEON optimized implementation) 
 
 ## 3. License
 
@@ -72,11 +95,13 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ## 4. Building 
 
-Building the QMIV framework requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 10.0, clang >= 13.0, MSVC >= 19.15). 
+Building the QMIV framework requires using CMake (https://cmake.org/) and C++17 conformant compiler (e.g., GCC >= 10.0, clang >= 13.0, MSVC >= 19.15). All applications are built together, the resulting executables are named `QMIV`, `QMIV-GS` and `QMIV-GS-renderer`.
 
-The IV-PSNR application and its build system is designed to create fastest possible binary. On x86-64 microarchitectures the build system can create four version of compiled application, each optimized for one predefined x86-64 Microarchitecture Feature Levels [x86-64, x86-64-v2, x86-64-v3, x86-64-v4] (defined in https://gitlab.com/x86-psABIs/x86-64-ABI). The final binary consists of this four optimized variants and a runtime dynamic dispatcher. The dispatcher uses CPUID instruction to detect available instruction set extensions and selects the fastest possible code path. 
+The applications of the QMIV framework and its build system are designed to create fastest possible binaries.   
+* On x86-64 microarchitecture the build system can create four version of compiled application, each optimized for one predefined x86-64 Microarchitecture Feature Levels [x86-64, x86-64-v2, x86-64-v3, x86-64-v4] (defined in https://gitlab.com/x86-psABIs/x86-64-ABI). The final binary consists of this four optimized variants and a runtime dynamic dispatcher. The dispatcher uses CPUID instruction to detect available instruction set extensions and selects the fastest possible code path.   
+* On ARM64 (AArch64) microarchitecture the build system can create two version of compiled application, optimized for ARM64v8.0 and ARM64v8.2. The final binary consists of this two optimized variants and a runtime dynamic dispatcher. The dispatcher uses ARM64 ELF hwcaps to detect available instruction set extensions and selects the fastest possible code path. This feature is available when building for Linux operating system only.   
 
-The IV-PSNR CMake project defines the following parameters:
+The QMIV CMake project defines the following parameters:
 
 | Variable | Type | Description |
 | :------- | :--- | :---------- |
@@ -104,247 +129,42 @@ The *configure_and_build* and *configure_for_developement* uses different set of
 | `PMBB_BUILD_WITH_MARCH_NATIVE`                        | False | True  |
 | `PMBB_GENERATE_TESTING`                               | False | True  |
 
-## 5. Usage
-
-### 5.1. Commandline parameters
-
-Commandline parameters are parsed from left to right. Multiple config files are allowed. Moreover, config file parameters can be overridden or added via commandline.  
-
-#### General parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-i0  | InputFile0       | File path - input sequence 0 |
-|-i1  | InputFile1       | File path - input sequence 1 |
-|-ff  | FileFormat       | Format of input sequence (optional, default=RAW) [RAW, PNG] |
-|-ps  | PictureSize      | Size of input sequences (WxH) |
-|-pw  | PictureWidth     | Width of input sequence |
-|-ph  | PictureHeight    | Height of input sequence |
-|-pf  | PictureFormat    | Picture format as defined by FFMPEG pix_fmt i.e. yuv420p10le |
-|-bd  | BitDepth         | Bit depth (optional, default=8, up to 14) |
-|-cf  | ChromaFormat     | Chroma format (optional, default=420) [420, 444] |
-|-s0  | StartFrame0      | Start frame 0 (optional, default=0) |
-|-s1  | StartFrame1      | Start frame 1 (optional, default=0) |
-|-nf  | NumberOfFrames   | Number of frames to be processed (optional, all=-1, default=-1) |
-|-r   | ResultFile       | Output file path for printing result(s) (optional) |
-|-ml  | MetricList       | List of quality metrics to be calculated, must be coma separated, quotes are required. "All" enables all available metrics. [PSNR, WSPSNR, IVPSNR, SSIM, MSSSIM, IVSSIM, IVMSSSIM] (optional, default="PSNR, WSPSNR, IVPSNR, IVSSIM") |
-
-PictureSize parameter can be used interchangeably with PictureWidth, PictureHeight pair. If PictureSize parameter is present the PictureWidth and PictureHeight arguments are ignored.
-PictureFormat parameter can be used interchangeably with BitDepth, ChromaFormat pair. If PictureFormat parameter is present the BitDepth and, ChromaFormat arguments are ignored.
-
-#### Masked (weighted) mode parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-im  | InputFileM       | File path - mask       (optional, same resolution as InputFile0 and InputFile1) |
-|-bdm | BitDepthM        | Bit depth for mask     (optional, default=BitDepth, up to 16) |
-|-cfm | ChromaFormatM    | Chroma format for mask (optional, default=ChromaFormat) [400, 420, 444] |
-
-#### Equirectangular parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-erp | Equirectangular  | Equirectangular sequence (flag, default disabled) |
-|-lor | LonRangeDeg      | Range for ERP sequence in degrees - Longitudinal (optional, default=360) |
-|-lar | LatRangeDeg      | Range for ERP sequence in degrees - Lateral (optional, default=180) |
-
-####  Colorspace parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-csi | ColorSpaceInput  | Color space of input file             (optional, default=YCbCr)           |
-|-csm | ColorSpaceMetric | Color space used to calculate metrics (optional, default=ColorSpaceInput) |
-
-If ColorSpaceInput!=ColorSpaceMetric the software performs on-demand conversion (RGB-->YCbCr or YCbCr-->RGB). Conversion requires specific YCbCr color space parameters. [RGB, BGR, GBR, YCbCr, YCbCr_BT601, YCbCr_SMPTE170M, YCbCr_BT709, YCbCr_SMPTE240M, YCbCr_BT2020]
-
-#### IV specific parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-sr  | SearchRange      | IV-metric search range around center point (optional, default=2 --> 5x5) |
-|-cws | CmpWeightsSearch | IV-metric component weights used during search ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory, requires USE_RUNTIME_CMPWEIGHTS=1) |
-|-cwa | CmpWeightsAverage| IV-metric component weights used during averaging ("Lm:Cb:Cr:0" or "R:G:B:0" - per component integer weights, default="4:1:1:0", quotes are mandatory) |
-|-unc | UnnoticeableCoef | IV-metric unnoticeable color difference threshold coeff ("Lm:Cb:Cr:0" or "R:G:B:0" - per component coeff, default="0.01:0.01:0.01:0", quotes are mandatory) |
-
-#### Structural similarity specific parameters
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-ssm | StructSimMode    | Calculation mode and structure variant (optional, default=BlockAveraged) [RegularGaussianFlt, RegularGaussianInt, RegularAveraged, BlockGaussianInt, BlockAveraged] |
-|-sss | StructSimStride  | Stride between pixels/windows (optional, default=4) |
-|-ssw | StructSimWindow  | Size of structure window (optional, applies to Block modes only, default=8) [8,16,32] |
-
-#### Validation parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-ipa | InvalidPelActn   | Select action taken if invalid pixel value is detected (optional, default=STOP) [SKIP = disable pixel value checking, WARN = print warning and ignore, STOP = stop execution, CNCL = try to conceal by clipping to bit depth range] |
-|-nma | NameMismatchActn | Select action taken if parameters derived from filename are different than provided as input parameters. Checks resolution, bit depth and chroma format. (optional, default=WARN) [SKIP = disable checking, WARN = print warning and ignore, STOP = stop execution] |
-
-#### Application parameters
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-|-nth | NumberOfThreads  | Number of worker threads (optional, default=-2, suggested ~8 for IVPSNR, all physical cores for SSIM) [0 = thread pool disabled, -1 = all available threads, -2 = reasonable auto]
-|-v   | VerboseLevel     | Verbose level (optional, default=1) |
-
-#### External config file
-
-| Cmd | ParamName        | Description |
-|:----|:-----------------|:------------|
-| -c  | n/a              | Valid path to external config file - in INI format (optional). Multiple config files can be provided by using multiple "-c" arguments. Config files are processed in arguments order. Content of config files are merged while repeating values are overwritten. |
-
-#### Dynamic dispatcher parameters
-| Cmd               | Description |
-|:------------------|:------------|
-| --DispatchForce   | Force dispatcher to selected microarchitecture (optional, default=UNDEFINED) [x86-64, x86-64-v2, x86-64-v3, x86-64-v4]. Forcing a selection of microarchitecture level not supported by CPU will lead to "illegal instruction" exception.
-| --DispatchVerbose | Verbose level for runtime dispatch module (optional, default=0) |
-
-### 5.2. Verbose level
-
-| Value | Behavior |
-|:------|:---------|
-| 0 | final (average) metric values only |
-| 1 | 0 + configuration + detected frame numbers |
-| 2 | 1 + argc/argv + frame level metric values |
-| 3 | 2 + computing time (could slightly slow down computations) |
-| 4 | 3 + IV specific debug data (GlobalColorShift, R2T+T2R, NumNonMasked) |
-| 9 | stdout flood |
-
-### 5.3. Compile-time parameters
+### 4.1. Compile-time parameters
 
 | Parameter name | Default value | Description |
 |:------------|:--------------|:------------|
-| USE_SIMD               | 1 | use SIMD (to be precise... use SSE 4.1 or AVX2 or AVX512) |
-| USE_RUNTIME_CMPWEIGHTS | 1 | use component weights provided at runtime |
+| PMBB_USE_SIMD  | 1 | use SIMD (to be precise... use SSE 4.1 or AVX2 or AVX512 or NEON), defined in libs/pmbb-core/src/xCommonDefCORE.h |
 
-### 5.4. Examples
+## 5. Changelog
 
-#### 5.4.1. Commandline parameters example
+### IV-PSNR v9.0 (QMIV v4.0)
+* added applications for the assessment of 3D Gaussian splat representations:
+  * QMIV-GS - renders the test and reference clouds with a built-in CPU renderer and calculates the metrics of the rendered views (see [README_QMIV-GS.md](README_QMIV-GS.md)):
+    * built-in CPU renderer of 3D Gaussian splats (tile-based, AVX2/AVX512 implementation, deterministic)
+    * camera parameters in PLY, COLMAP and INI formats
+    * input views mode and posetrace mode
+    * masked mode with masks derived during rendering (Occupancy, Alpha)
+    * metrics calculated in RGB and YCbCr
+    * output of rendered pictures (RAW, PNG, BMP; RGB or YCbCr)
+    * calculation of hashes of input clouds and rendered pictures (xxHash - XXH128)
+  * QMIV-GS-renderer - renders views of a single cloud with the renderer of QMIV-GS and writes them to files (see [README_QMIV-GSR.md](README_QMIV-GSR.md))
+* added pVAR metric (`PVD` in MetricList) [PVAR]
+* faster calculation of IV-metrics (IV-PSNR, IV-SSIM, IV-MS-SSIM) - the search for corresponding pixels operates on planar pictures and processes several pixels at once (SSE4.1, AVX2, AVX512, NEON)
+* reduced memory usage
+* fixed calculation of MS-SSIM metric(s) for small pictures - avoid scaling below 32x32px
+* faster calculation of IV-SSIM and IV-MS-SSIM metrics by algorithmic optimization and wider SIMD coverage
+* faster calculation of SSIM metric(s) by using multi-block AVX512 implementation
+* added additional variant of SSIM-related metrics calculation: StructSimBrdExt
+* added support for ARM64 microarchitecture (AArch64 mode)
+* added implements using NEON SIMD extension for most performance critical routines 
+  * ARM NOEN SIMD optimized routines coverage is on par with x86-64 SIMD (SSE4.1, AVX2, and AVX512)
+* cmake-based build system with support for runtime dynamic dispatch for ARM64 CPUs
+  * by default build for ARMv8.0 and ARMv8.2 with straightforward  extension possibilities
+* added possibility to read BMP file or list of BMP files
+* improved test coverage
+* several small performance improvements & minor bugfixes
 
-Metrics (PSNR, WS-PSNR, IV-PSNR, and IV-SSIM) of *SA_ref.yuv* and *SA_test.yuv*. Sequence resolution is 4096×2048, YUV420, 10 bits per sample. Sequence format is ERP. Mean metrics calculated for the first 20 frames will be written into IVPSNR.txt:  
-`IVPSNR -i0 SA_ref.yuv -i1 SA_test.yuv -pw 4096 -ph 2048 -bd 10 -erp -nf 20 -r IVPSNR.txt`  
-`IVPSNR -i0 SA_ref.yuv -i1 SA_test.yuv -ps 4096x2048 -pf yuv420p10le -erp -nf 20 -r IVPSNR.txt`  
-
-Metrics (all available) of *SD_ref.yuv* and *SD_test.yuv*. Sequence resolution is 2048×1088, YUV420, 8 bits per sample. Sequence format is perspective. Mean metrics calculated for all frames will be written into results.txt:  
-`IVPSNR -i0 SD_ref.yuv -i1 SD_test.yuv -r results.txt -w 2048 -h 1088 -ml "All"`  
-
-Metrics (PSNR, WS-PSNR and IV-PSNR) of *SC_ref.yuv* and *SC_test.yuv*. Sequence resolution is 4096×2048, YUV420, 10 bits per sample. Sequence format is ERP, with lateral range equal to 90°. Mean IV-PSNR calculated for 5 frames (frames 0-4 of reference video and 10-14 of test video) will be written into o.txt:  
-`IVPSNR -i0 SC_ref.yuv -i1 SC_test.yuv -w 4096 -h 2048 -erp -lar 90 -l 5 -s1 10 -ml "PSNR, WSPSNR, IVPSNR" -r o.txt`
-
-External config file:  
-`IVPSNR -c "config.cfg"`  
-
-External config files with some parameters added/overwritten:  
-`IVPSNR -c "config1st.cfg" -c "config2nd.cfg" -v 1 -nth 4`  
-
-#### 5.4.2. Config file examples
-
-```ini
-#config example 1
-InputFile0      = "SA_ref.yuv"
-InputFile1      = "SA_test.yuv"
-PictureWidth    = 4096
-PictureHeight   = 2048
-BitDepth        = 10
-ChromaFormat    = 420
-VerboseLevel    = 3
-OutputFile      = "result.txt"
-```
-
-```ini
-#config example 2
-InputFile0        = "SA_ref.yuv"
-InputFile1        = "SA_test.yuv"
-FileFormat        = RAW
-PictureSize       = 4096x2048
-#PictureWidth     = 4096
-#PictureHeight    = 2048
-PictureFormat     = yuv420p10le
-#BitDepth         = 10
-#ChromaFormat     = 420
-StartFrame0       = 0         
-StartFrame1       = 0
-NumberOfFrames    = -1
-ResultFile        = "IVPSNR.txt"
-MetricList        = "all"
-
-#InputFileM       = "SA_mask.yuv"
-#BitDepthM        = 16
-#ChromaFormatM    = 420
-
-Equirectangular   = 0
-#LonRangeDeg      = 360
-#LatRangeDeg      = 180
-
-#ColorSpaceInput  = YCbCr
-#ColorSpaceMetric = YCbCr
-
-SearchRange       = 2
-CmpWeightsSearch  = "4:1:1:0"
-CmpWeightsAverage = "4:1:1:0"
-#UnnoticeableCoef = "0:0:0:0"
-
-NumberOfThreads   = 12
-VerboseLevel      = 3
-```
-
-### 5.5. Pixel values checking notes (InvalidPelActn)
-
-Before calculating any metric the software scans the content of YUV file in order to evaluate if all pixel values are in range `[0, MaxVal]` where `MaxVal = (1<<BitDepth) - 1`. If invalid pel is detected the software can take following actions based on InvalidPelActn parameter value:
-* SKIP - disable pixel value checking
-* WARN - print warning and ignore invalid pel values (may lead to unreliable metrics value)
-* STOP - print warning and stop execution
-* CNCL - print warning and try to conceal the pel value by clipping to highest value within bit depth range
-
-### 5.6. Filename (filepath) parameters mismatch checking notes (InvalidPelAction)
-
-Before opening the YUV file the software tries to derive important video parameters (resolution, bit depth and chroma format) from file name and file path. If mismatch between parameters provided from commandline (or config file) and derived values is detected, the software can take following actions based on NameMismatchActn parameter value:
-* SKIP - disable pixel value checking
-* WARN - print warning and ignore invalid pel values
-* STOP - print warning and stop execution
-
-### 5.7. Masked mode - requirements and notes
-
-* Resolution of the mask file has to be identical as input file.
-* Allowed mask values are `0` (interpreted as inactive pixel) and `(1<<BitDepthM)-1)` (interpreted as active pixel). Behavior for other values is undefined at this moment.
-* The data processing functions for masked mode are not implemented with the use of SIMD instructions leading to slower computations.
-
-### 5.8. Colorspace  modes - requirements and notes
-
-Optional mode of the IVPSNR software allows to define or convert the colorspace of input sequences and/or colorspace used to calculate metrics. 
-
-The default behavior is to assume generic YCbCr colorspace for both input and metric and perform no conversion. The metric values are decorated with YCbCr or Y:Cb:Cr suffix.
-
-The second option is to use RGB input files and calculate metric in RGB. In this case the IVPSNR software performs no conversion and output metrics labeled as RGB, i.e., PSNR R:G:B PSNR-RGB. To enable this mode use `-csi RGB` input argument. 
-
-When calculating metrics in RGB mode, component weights should be set equal for all three components:
-
-```ini
-CmpWeightsAverage = "1:1:1:0"
-CmpWeightsSearch  = "1:1:1:0"
-```
-
-This can be archived using config file or commandline (`-cwa "1:1:1:0" -cws "1:1:1:0"`).
-
-The other path assumes on-demand colorspace conversion. The software is able to perform RGB-to-YCbCr or YCbCr-to-RGB conversion. In this case, a specific variant of YCbCr colorspace (BT601, SMPTE170M, BT709, SMPTE240M, BT2020) have to be defined for input or metric. The valid arguments for YCbCr colorspace variants are [YCbCr_BT601, YCbCr_SMPTE170M, YCbCr_BT709, YCbCr_SMPTE240M, YCbCr_BT2020].
-
-For example, if one wants to use input sequence in BT709 colorspace and calculate metrics in RGB, the following parameters should be used: `-csi YCbCr_BT709 -csm RGB -cwa "1:1:1:0" -cws "1:1:1:0"`.
-
-### 5.9. PNG mode
-
-Optional mode of the IVPSNR software allows to calculate the metrics not for video files, but for lists of indexed images in the PNG format. 
-
-The name of input file should contain format string as defined in C++20 std::format [ISO/IEC 14882:2020] in the form of `{:d}` with optional modifiers. The file name is determined by formatting input string using image index.
-
-The software expects lists of consequently numbered files. The first file index can be equal to 0 or 1. The last file is detected by checking the existence of consecutive files. The first missing index is treated as the end of the file list.
-
-Examples:
-* The list of files {img001.png, img002.png, img003.png} should be specified as `img{:03d}.png`. 
-* The list of files {img000.png, img001.png, img002.png, img004.png}, specified as `img{:03d}.png`, will be processed for 0,1, and 2 indexes only. The `img002.png` will be detected as the last image in list.
-
-## 6. Changelog
-
-### IV-PSNR v8.0
+### IV-PSNR v8.0 (based on QMIV v3.0)
 
 * added calculation of IV-MS-SSIM (Immersive Video - Multi Scale SSIM)
 * added several variants of SSIM-related metrics calculation:
@@ -358,6 +178,7 @@ Examples:
 * switching default approach for SSIM-related metrics form (Mode=RegularGaussianFlt,Stride=1 - as defined by authors of SSIM metric) to (Mode=BlockAveraged,Stride=1,Window=8 - similar to approach used by FFMPEG) - this change reduces computational complexity while increasing correlation with MOS
 * faster calculation of SSIM-based metrics by algorithmic optimization and wider SIMD coverage
   * fast SIMD (SSE4.1, AVX2, and AVX512) implementation for BlockAveraged SSIM mode
+* added possibility to read BMP file or list of BMP files
 * fixed calculation of MS-SSIM metric(s) for small pictures - avoid scaling below 32x32px
 * better performance for high core count CPUs
   * reduced multi-threading overhead by switching to new thread pool API
@@ -373,6 +194,7 @@ Examples:
 
 ### IV-PSNR v7.0 (based on QMIV v1.0) [N0535]
 
+* first release of QMIV framework which is descendant of previously developed IV-PSNR software v6.0
 * changes relative to IV-PSNR software v6.0:
   * **introduces a set of Structural Similarity related metrics - SSIM and IV-SSIM**
   * improved arguments parsing and validation
@@ -474,15 +296,22 @@ Examples:
 * fixed possibility of reading from unallocated memory region during 5×5 block search
 * fixed GCD values rounding and clipping
 
-### IV-PSNR v1.0 [M45093]
+### IV-PSNR v1.0 [M48093]
 
-* first release
+* first IV-PSNR release
 
-## 7. References
+## 6. References
 
 * [IVPSNR] A. Dziembowski, D. Mieloch, J. Stankowski and A. Grzelka, "IV-PSNR – the objective quality metric for immersive video applications," in IEEE Transactions on Circuits and Systems for Video Technology, doi: [10.1109/TCSVT.2022.3179575](https://doi.org/10.1109/TCSVT.2022.3179575). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-PSNR---the-objective-quality-metric-for-immersive-video-applications)
-* [IVSSIM] A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090)
-* [IVSOFT] J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)
+* [IVSSIM] A. Dziembowski, W. Nowak, J. Stankowski, "IV-SSIM - The Structural Similarity Metric for Immersive Video", Applied Sciences, Vol. 14, No. 16, Aug 2024, doi: [10.3390/app14167090](https://doi.org/10.3390/app14167090). [Available on authors webpage](http://multimedia.edu.pl/?page=publication&section=IV-SSIM----The-Structural-Similarity-Metric-for-Immersive-Video)
+* [IVMSSSIM] B. Sojka, J. Stankowski, A. Dziembowski, "Multi-scale structural similarity with geometric alignment for immersive video quality assessment," International Conference on Image Processing, ICIP 2026, Tampere, Finland, 13-17.09.2026
+* [PVAR] A. Dziembowski, "pVAR: An ultra low complexity image quality assessment via spatial error variance," IEEE Signal Processing Letters, Vol. 33, 2026, pp. 2710-2714, doi: [10.1109/LSP.2026.3708417](https://doi.org/10.1109/LSP.2026.3708417)
+* [Sun17] Y. Sun, A. Lu, L. Yu, "Weighted-to-Spherically-Uniform Quality Evaluation for Omnidirectional Video," IEEE Signal Processing Letters, Vol. 24, No. 9, 2017, pp. 1408-1412, doi: [10.1109/LSP.2017.2720693](https://doi.org/10.1109/LSP.2017.2720693)
+* [IVSOFT1] J. Stankowski, A. Dziembowski, "IV-PSNR: Software for immersive video objective quality evaluation," SoftwareX, Volume 24, 2023, doi: [10.1016/j.softx.2023.101592](https://doi.org/10.1016/j.softx.2023.101592)
+* [IVSOFT2] J. Stankowski, A. Dziembowski, "Version [7.1] – [IV-PSNR: Software for immersive video objective quality evaluation]," SoftwareX, Volume 28, 2024, doi: [10.1016/j.softx.2024.101961](https://doi.org/10.1016/j.softx.2024.101961)
+* [IVSOFT3] J. Stankowski, A. Dziembowski, "Version [8.0] – [IV-PSNR: Software for immersive video objective quality evaluation]," SoftwareX, Volume 33, 2026, 102487
+* [M79068] B. Szydełko, J. Stankowski, A. Dziembowski, "Unified QMIV framework with optimized renderer for Gaussian splats", ISO/IEC JTC1/SC29/WG7 MPEG 3DGH/M79068, October 2026, Hangzhou, China.
+* [N0580] J. Stankowski, A. Dziembowski, "Software manual of QMIV 2", ISO/IEC JTC1/SC29/WG04 MPEG VC/N0580, October 2024, Antalya, Turkey.
 * [N0535] J. Stankowski, A. Dziembowski, "Software manual of QMIV", ISO/IEC JTC1/SC29/WG04 MPEG VC/N0535, July 2024, Sapporo, Japan.
 * [M68222] J. Stankowski, A. Dziembowski, "The final version of the IV-PSNR software", ISO/IEC JTC1/SC29/WG04 MPEG VC/M68222, July 2024, Sapporo, Japan.
 * [M64727] J. Stankowski, A. Dziembowski, "Optimized IV-PSNR software with invalid pixel detection", ISO/IEC JTC1/SC29/WG04 MPEG VC/M64727, October 2023, Hannover, Germany.

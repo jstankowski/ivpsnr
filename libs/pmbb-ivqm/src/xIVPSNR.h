@@ -28,35 +28,25 @@ public:
   void  setDebugCallbackGCS(tDCfGCS DebugCallbackGCS) { m_DebugCallbackGCS = DebugCallbackGCS; }
   void  setDebugCallbackQAP(tDCfQAP DebugCallbackQAP) { m_DebugCallbackQAP = DebugCallbackQAP; }
 
-//IVPSNR 
-public:
-  flt64 calcPicIVPSNR(const xPicP* Tst, const xPicP* Ref, const xPicI* TstI = nullptr, const xPicI* RefI = nullptr);
 
-  flt64 calcPicIVPSNR(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiffRef2Tst);
-  flt64 calcPicIVPSNR(const xPicI* Tst, const xPicI* Ref, const int32V4& GlobalColorDiffRef2Tst);
+public: //IVPSNR 
+  flt64V2 calcPicIVPSNR (const xPicP* Tst, const xPicP* Ref);
+  flt64V2 calcPicIVPSNR (const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP);
+  flt64V2 calcPicIVPSNRM(const xPicP* Tst, const xPicP* Ref                                          , const xPicP* Msk, int32 NumNonMasked = NOT_VALID);
+  flt64V2 calcPicIVPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP* TstSCP, const xPicP* RefSCP, const xPicP* Msk, int32 NumNonMasked);
 
-protected:  
-  flt64 xCalcQualAsymmetricPic(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff); //asymetric Q planar
-  flt64 xCalcQualAsymmetricPic(const xPicI* Tst, const xPicI* Ref, const int32V4& GlobalColorDiff); //asymetric Q interleaved
 
-  void  xCalcQualAsymmetricRng(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY); //asymetric Q interleaved
-  void  xCalcQualAsymmetricRng(const xPicI* Tst, const xPicI* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY); //asymetric Q interleaved
-};
+protected: //asymetric Q  
+  flt64V2 xCalcQualAsymmetricPic(const xPicP* Tst, const xPicP* RefSCP);
+  flt64   xCalcDistAsymmetricCmp(const xPicP* Tst, const xPicP* RefSCP, eCmp CmpId);
+  flt64V2 xCalcQualAsymmetricPic(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff); 
+  void    xCalcDistAsymmetricRng(const xPicP* Tst, const xPicP* Ref, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY); 
 
-//===============================================================================================================================================================================================================
 
-class xIVPSNRM : public xIVPSNR
-{
-public:
-  flt64 calcPicIVPSNRM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, const xPicI* TstI, const xPicI* RefI);
-
-  flt64 calcPicIVPSNRM(const xPicI* Tst, const xPicI* Ref, const xPicP* Msk, int32 NumNonMasked, const int32V4& GlobalColorDiffRef2Tst);
-
-protected:
-
-  //asymetric Q interleaved
-  flt64 xCalcQualAsymmetricPicM(const xPicI* Tst, const xPicI* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, const int32 NumNonMasked);
-  void  xCalcQualAsymmetricRngM(const xPicI* Tst, const xPicI* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY);
+  flt64V2 xCalcQualAsymmetricPicM(const xPicP* Tst, const xPicP* RefSCP, const xPicP* Msk, int32 NumNonMasked);
+  flt64   xCalcDistAsymmetricCmpM(const xPicP* Tst, const xPicP* RefSCP, const xPicP* Msk, eCmp CmpId);
+  flt64V2 xCalcQualAsymmetricPicM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, const int32 NumNonMasked);
+  void    xCalcDistAsymmetricRngM(const xPicP* Tst, const xPicP* Ref, const xPicP* Msk, const int32V4& GlobalColorDiff, int32 BegY, int32 EndY);
 };
 
 //===============================================================================================================================================================================================================

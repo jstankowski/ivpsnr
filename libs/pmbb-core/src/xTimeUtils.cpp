@@ -1,5 +1,5 @@
 /*
-    SPDX-FileCopyrightText: 2019-2023 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
+    SPDX-FileCopyrightText: 2019-2026 Jakub Stankowski <jakub.stankowski@put.poznan.pl>
     SPDX-License-Identifier: BSD-3-Clause
 */
 
@@ -12,11 +12,17 @@ namespace PMBB_NAMESPACE {
 void xTimeStamp::calibrateTimeStamp()
 {
   tDuration TotalProcTime  = m_ProcEndTime  - m_ProcBegTime ;
-  uint64    TotalProcTicks = m_ProcEndTicks - m_ProcBegTicks;
+  flt64     TotalProcSec   = (flt64)(std::chrono::duration_cast<tDurationS>(TotalProcTime).count());
+  uint64    TotalProcTicks = m_ProcEndTicks - m_ProcBegTicks;  
+  flt64     TicksPerSec    = (flt64)TotalProcTicks / (flt64)TotalProcSec;
 
-  m_TicksPerMicroSec = (flt64)TotalProcTicks / std::chrono::duration_cast<tDurationUS>(TotalProcTime).count();
-  m_TicksPerMiliSec  = (flt64)TotalProcTicks / std::chrono::duration_cast<tDurationMS>(TotalProcTime).count();
-  m_TicksPerSec      = (flt64)TotalProcTicks / std::chrono::duration_cast<tDurationS >(TotalProcTime).count();
+  setupCalibration(TicksPerSec);
+}
+void xTimeStamp::setupCalibration(flt64 TicksPerSec)
+{
+  m_TicksPerSec      = TicksPerSec          ;
+  m_TicksPerMiliSec  = TicksPerSec / 1000   ;
+  m_TicksPerMicroSec = TicksPerSec / 1000000;
 }
 std::string xTimeStamp::formatCalibration() const 
 { 
